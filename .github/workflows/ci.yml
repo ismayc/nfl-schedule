@@ -47,33 +47,9 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
 
-  # Netlify mirrors the same build. Skipped entirely until NETLIFY_AUTH_TOKEN exists,
-  # so the workflow stays green on a fork or before the secret is added.
-  netlify:
-    needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    # Declared at JOB level deliberately. A step's own `env:` block is not in scope
-    # for that step's `if:`, so gating on it there would skip the deploy forever —
-    # green, and silently doing nothing, even once the secret exists.
-    env:
-      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-      NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run coverage:badge # writes public/coverage.json for the README badge
-      - run: npm run build
-      - name: Deploy
-        if: env.NETLIFY_AUTH_TOKEN != ''
-        run: npx netlify-cli@17 deploy --prod --dir dist
-      - name: Note why the deploy was skipped
-        if: env.NETLIFY_AUTH_TOKEN == ''
-        run: echo "::notice::Netlify deploy skipped — add the NETLIFY_AUTH_TOKEN repository secret to enable it."
+  # Netlify deploys via its own GitHub integration (it builds the-nfl-schedule.netlify.app
+  # on every push using netlify.toml), so there is no Netlify job here — a CI-driven
+  # deploy would be a redundant second path to the same site.
 
   # The data scripts use Node built-ins only, so they run on a bare checkout with no
   # install step. This job guards that property — if someone adds an npm import to a

@@ -66,9 +66,16 @@ function buildConference(confKey, field, confGames, seedOf) {
   const inRound = (k) => confGames.filter((g) => g.round === k)
   const byeTeam = bySeed[1]
 
-  // Wild Card: 2v7, 3v6, 4v5 (the #1 seed sits out).
+  // Wild Card: 2v7, 3v6, 4v5 (the #1 seed sits out). Build from the ACTUAL games when
+  // they exist (ordered by host seed), projecting from seeds only before they're played.
+  // Doing it game-first keeps the display correct even where our seeding approximation
+  // orders two identical-record wild cards differently than the league did.
   const wcGames = inRound('WC')
-  const WC = PLAYOFF.wildCardPairs.map(([hi, lo]) => matchup('WC', bySeed[hi], bySeed[lo], wcGames, seedOf))
+  const WC = wcGames.length
+    ? wcGames
+        .map((g) => matchup('WC', g.home, g.away, wcGames, seedOf))
+        .sort((a, b) => (a.seedHome ?? 99) - (b.seedHome ?? 99))
+    : PLAYOFF.wildCardPairs.map(([hi, lo]) => matchup('WC', bySeed[hi], bySeed[lo], [], seedOf))
 
   // Divisional: the bye team plus the three Wild Card winners, RE-SEEDED so the top
   // remaining seed hosts the bottom one.

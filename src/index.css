@@ -1,0 +1,2333 @@
+/* Design tokens. Dark is the default set; light overrides via the theme attribute
+   that index.html stamps on <html> before first paint. */
+:root,
+:root[data-theme='dark'] {
+  --bg: #0e1117;
+  --bg-soft: #161b25;
+  --card: #1a2029;
+  --card-hover: #212936;
+  --border: #2a3341;
+  --text: #e9edf3;
+  --text-dim: #98a3b3;
+  --text-faint: #69748a;
+
+  /* NFL blue, pulled toward legibility on dark. UI-chrome only — never a data mark
+     (PLAYBOOK §9), and kept clear of the red --live so status never reads as accent. */
+  --accent: #4f9dff;
+  --accent-ink: #08131f;
+  --accent-soft: rgba(79, 157, 255, 0.14);
+  --live: #ff4757;
+  --win: #3ddc84;
+  --loss: #ff6b6b;
+  --gold: #f4c542;
+
+  --radius: 14px;
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  --page-bg: radial-gradient(1100px 560px at 85% -12%, #24304a 0%, var(--bg) 58%);
+}
+
+:root[data-theme='light'] {
+  --bg: #f1f4f9;
+  --bg-soft: #e7ecf4;
+  --card: #ffffff;
+  --card-hover: #f6f8fc;
+  --border: #d8e0ec;
+  --text: #131922;
+  --text-dim: #5a6675;
+  --text-faint: #8b96a6;
+
+  --accent: #1f5fd0;
+  --accent-ink: #fff;
+  --accent-soft: rgba(31, 95, 208, 0.1);
+  --live: #d92c3c;
+  --win: #17924f;
+  --loss: #cc3b3b;
+  --gold: #a9760a;
+
+  --shadow: 0 4px 16px rgba(20, 35, 60, 0.1);
+  --page-bg: radial-gradient(1100px 560px at 85% -12%, #dbe4f2 0%, var(--bg) 58%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  background-image: var(--page-bg);
+  background-attachment: fixed;
+  color: var(--text);
+  font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 22px 18px 64px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+.pos {
+  color: var(--win);
+}
+.neg {
+  color: var(--loss);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.brand h1 {
+  font-size: 26px;
+  letter-spacing: -0.02em;
+}
+
+.season {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.tagline {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+  font-size: 13.5px;
+}
+
+.live-now {
+  color: var(--live);
+  font-weight: 600;
+}
+
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--live);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.top-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* A <select> is sized by its widest option ("Golden State Valkyries", "Central
+   Europe"), which overflows a narrow phone. Applied to every .field rather than
+   per-container, so a new filter can't reintroduce the overflow. */
+.field {
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
+}
+
+.field select {
+  max-width: 100%;
+}
+
+/* ── Controls ───────────────────────────────────────────────────────── */
+select,
+.ghost,
+.chip,
+.view-btn,
+.seg button {
+  font: inherit;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+select:hover,
+.ghost:hover,
+.chip:hover,
+.view-btn:hover,
+.seg button:hover {
+  background: var(--card-hover);
+}
+
+.ghost {
+  width: 38px;
+  padding: 7px 0;
+  text-align: center;
+}
+
+.ghost.on,
+.chip.on,
+.seg button.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.views {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.view-btn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+}
+
+/* Count of what's hidden behind a toggle. */
+.chip-count {
+  background: var(--bg-soft);
+  border-radius: 999px;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.chip.on .chip-count {
+  background: var(--card);
+  color: var(--accent);
+}
+
+.seg {
+  display: flex;
+  gap: 0;
+}
+.seg button {
+  border-radius: 0;
+}
+.seg button:first-child {
+  border-radius: 10px 0 0 10px;
+}
+.seg button:last-child {
+  border-radius: 0 10px 10px 0;
+  border-left: 0;
+}
+
+/* ── Views ──────────────────────────────────────────────────────────── */
+.view-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.view-head h2 {
+  font-size: 20px;
+}
+
+.sub {
+  margin: 5px 0 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  max-width: 60ch;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 16px 6px;
+  margin-bottom: 16px;
+}
+
+.card-title {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.grid-2 {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+  /* Cards size to their own content instead of stretching to the tallest sibling. */
+  align-items: start;
+}
+
+/* A grid item's automatic minimum size is min-content, so a card holding a wide
+   table refuses to shrink and pushes the page sideways — its inner
+   overflow-x:auto never gets the chance to scroll. min-width:0 hands the clipping
+   back to .table-scroll. */
+.grid-2 > * {
+  min-width: 0;
+}
+
+.empty {
+  color: var(--text-dim);
+  text-align: center;
+  padding: 48px 16px;
+  background: var(--card);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+/* ── Logos ──────────────────────────────────────────────────────────── */
+.logo {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: var(--logo-size);
+  height: var(--logo-size);
+}
+
+.logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* One variant per theme, swapped in CSS so there's no re-render on toggle. */
+:root[data-theme='dark'] .logo-light,
+:root[data-theme='light'] .logo-dark {
+  display: none;
+}
+
+/* ── Standings ──────────────────────────────────────────────────────── */
+.table-scroll {
+  overflow-x: auto;
+}
+
+.standings {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.standings th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.standings td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.standings tr:last-child td {
+  border-bottom: 0;
+}
+
+.standings .num {
+  text-align: right;
+}
+
+.col-rank {
+  width: 52px;
+}
+
+.rank {
+  color: var(--text-faint);
+  font-size: 12px;
+  margin-left: 2px;
+}
+
+.star {
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: 13px;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.star:hover {
+  transform: scale(1.2);
+}
+.star.on {
+  color: var(--gold);
+}
+
+.team-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.team-btn:hover .team-nick {
+  color: var(--accent);
+}
+
+.team-loc {
+  color: var(--text-dim);
+}
+
+.team-nick {
+  font-weight: 600;
+}
+
+.row-followed {
+  background: var(--accent-soft);
+}
+
+.row-elim {
+  opacity: 0.55;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  line-height: 1.4;
+}
+.badge-in {
+  background: rgba(61, 220, 132, 0.16);
+  color: var(--win);
+}
+.badge-out {
+  background: rgba(255, 107, 107, 0.16);
+  color: var(--loss);
+}
+
+.streak {
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.streak-w {
+  color: var(--win);
+}
+.streak-l {
+  color: var(--loss);
+}
+
+.l10 {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.l10 i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+.l10-w {
+  background: var(--win);
+}
+.l10-l {
+  background: var(--border);
+}
+
+.cutline td {
+  padding: 0;
+  border-bottom: 0;
+}
+
+.cutline span {
+  display: block;
+  margin: 4px 0;
+  padding: 3px 8px;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border-top: 2px dashed var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ── Schedule ───────────────────────────────────────────────────────── */
+.day {
+  margin-bottom: 22px;
+  scroll-margin-top: 12px;
+}
+
+.day-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.day.is-today .day-head {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.day-count {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+.day-games {
+  display: grid;
+  gap: 10px;
+}
+
+.game {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 14px;
+  align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.game:hover {
+  background: var(--card-hover);
+  border-color: var(--accent);
+}
+
+.game.state-live {
+  border-color: var(--live);
+}
+
+.game.state-void {
+  opacity: 0.6;
+}
+
+.game-when {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.time {
+  font-weight: 600;
+}
+
+.zone,
+.day-count {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.live-badge {
+  color: var(--live);
+  font-weight: 700;
+  font-size: 12.5px;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+.final-badge {
+  font-size: 12px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.void-badge {
+  font-size: 12px;
+  color: var(--gold);
+}
+
+.game-teams {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.side {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.side:last-child {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.side-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.side-loc {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.side-nick {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-score {
+  font-size: 19px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  margin-inline: auto 0;
+}
+
+.side:last-child .side-score {
+  margin-inline: 0 auto;
+}
+
+.side.winner .side-score,
+.side.winner .side-nick {
+  color: var(--text);
+}
+
+.side.winner .side-score {
+  color: var(--accent);
+}
+
+.side.followed .side-nick {
+  color: var(--gold);
+}
+
+/* The star sits inside a clickable card, so it needs its own hit area. */
+.side .star {
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 3px;
+  border-radius: 5px;
+  order: -1;
+}
+
+.side:last-child .star {
+  order: 1;
+}
+
+.side .star:hover {
+  background: var(--bg-soft);
+}
+
+.at {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.game-meta {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.note {
+  color: var(--gold);
+}
+
+.countdown {
+  color: var(--accent);
+}
+
+/* ── Stats ──────────────────────────────────────────────────────────── */
+/* Data-mark colors are separate from --accent on purpose: the orange is UI
+   chrome (buttons, active states) and never encodes data, so a mark is never
+   confused for a control. The diverging pair below is the validated blue↔red,
+   checked against these exact card surfaces in both themes. */
+:root,
+:root[data-theme='dark'] {
+  --viz-pos: #3987e5;
+  --viz-neg: #e66767;
+  --viz-bar: #3987e5;
+  --viz-zero: #383835;
+}
+
+:root[data-theme='light'] {
+  --viz-pos: #2a78d6;
+  --viz-neg: #e34948;
+  --viz-bar: #2a78d6;
+  --viz-zero: #c3c2b7;
+}
+
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fine {
+  color: var(--text-faint);
+  font-size: 11.5px;
+  margin: 8px 0 10px;
+}
+
+.fine.top {
+  margin-top: -4px;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 11px 12px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.tile-btn {
+  cursor: pointer;
+}
+
+.tile-btn:hover,
+.tile.open {
+  border-color: var(--accent);
+}
+
+.tile-value {
+  font-size: 23px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.tile-label {
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.tile-sub {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.tile-caret {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.drill {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.drill li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 2px;
+}
+
+.drill-date {
+  color: var(--text-dim);
+  width: 82px;
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.drill-score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.drill-note {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 11.5px;
+}
+
+/* Category switcher — one category shown at a time, so the chart is a single
+   series and needs no legend. */
+.cats {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.cat {
+  font: inherit;
+  font-size: 11.5px;
+  padding: 3px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.cat:hover {
+  color: var(--text);
+}
+
+.cat.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.leaders {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.leaders td {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.leaders tr:last-child td {
+  border-bottom: 0;
+}
+
+.lead-rank {
+  width: 22px;
+  text-align: right;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lead-team button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+}
+
+.lead-name {
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.lead-pos {
+  color: var(--text-faint);
+  font-size: 11px;
+  margin-left: 6px;
+}
+
+.lead-bar {
+  width: 45%;
+  min-width: 60px;
+}
+
+/* 4px rounded data-end, anchored to the baseline. */
+.bar {
+  display: block;
+  height: 9px;
+  width: var(--w);
+  background: var(--viz-bar);
+  border-radius: 0 4px 4px 0;
+}
+
+.lead-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  width: 54px;
+}
+
+/* Diverging: bars grow out from a shared zero line. */
+.margin {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.margin-row {
+  display: grid;
+  grid-template-columns: 108px 1fr 82px;
+  align-items: center;
+  gap: 8px;
+}
+
+.margin-team {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.margin-team span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.margin-team:hover span {
+  color: var(--accent);
+}
+
+.margin-track {
+  position: relative;
+  height: 18px;
+}
+
+.margin-zero {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--viz-zero);
+}
+
+.margin-bar {
+  position: absolute;
+  top: 4px;
+  height: 10px;
+  width: var(--w);
+}
+
+.margin-bar.pos {
+  left: 50%;
+  background: var(--viz-pos);
+  border-radius: 0 4px 4px 0;
+}
+
+.margin-bar.neg {
+  right: 50%;
+  background: var(--viz-neg);
+  border-radius: 4px 0 0 4px;
+}
+
+.margin-label {
+  position: absolute;
+  top: 1px;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+/* Anchored past the end of its own bar, reading the same --w the bar does, but
+   clamped so a long bar in a narrow track can't push the label out of the card.
+   The reserve matches the widest label ("−10.0"). */
+.margin-label.pos {
+  left: min(calc(50% + var(--w, 0%) + 6px), calc(100% - 34px));
+}
+
+.margin-label.neg {
+  right: min(calc(50% + var(--w, 0%) + 6px), calc(100% - 34px));
+}
+
+.margin-split {
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.margin-split i {
+  font-style: normal;
+  opacity: 0.5;
+  margin: 0 3px;
+}
+
+/* Status always ships icon + word, never color alone. */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+.status i {
+  font-style: normal;
+}
+
+.st-good {
+  color: var(--win);
+  font-weight: 600;
+}
+.st-out {
+  color: var(--text-faint);
+}
+.st-in {
+  color: var(--viz-pos);
+}
+.st-chase {
+  color: var(--text-dim);
+}
+
+.race td {
+  padding: 6px 8px;
+}
+
+/* ── Week ───────────────────────────────────────────────────────────── */
+.wk-nav {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.wk-nav .ghost:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.wk {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.wk-col {
+  min-width: 0;
+}
+
+.wk-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.wk-dow {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.wk-date {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.wk-head.is-today {
+  border-bottom-color: var(--accent);
+}
+
+.wk-head.is-today .wk-dow,
+.wk-head.is-today .wk-date {
+  color: var(--accent);
+}
+
+.wk-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 44px;
+}
+
+.wk-game {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 7px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.wk-game:hover {
+  background: var(--card-hover);
+  border-color: var(--accent);
+}
+
+.wk-game.is-mine {
+  border-color: var(--gold);
+}
+
+.wk-game.is-live {
+  border-color: var(--live);
+}
+
+.wk-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.wk-abbr {
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wk-pts {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.wk-pts.won {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.wk-time {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  padding-top: 1px;
+}
+
+/* Seven columns don't fit a phone; stack into a two-column agenda instead. */
+@media (max-width: 720px) {
+  .wk {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .wk-head {
+    justify-content: flex-start;
+  }
+}
+
+/* ── Bracket ────────────────────────────────────────────────────────── */
+.banner {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 9px 13px;
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.banner-champ {
+  background: rgba(244, 197, 66, 0.14);
+  border-color: var(--gold);
+  font-size: 15px;
+}
+
+.bx {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.bx-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.bx-round {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  text-align: center;
+  font-weight: 600;
+}
+
+.bx-series {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 7px 8px 5px;
+}
+
+.bx-series.is-live {
+  border-color: var(--live);
+}
+
+.bx-series.is-proj {
+  border-style: dashed;
+}
+
+.bx-col-final .bx-series {
+  border-color: var(--gold);
+}
+
+.bx-side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 2px;
+}
+
+.bx-side + .bx-side {
+  border-top: 1px solid var(--border);
+}
+
+.bx-seed {
+  font-size: 10px;
+  color: var(--text-faint);
+  width: 12px;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.bx-team {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  min-width: 0;
+  flex: 1;
+}
+
+.bx-name {
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bx-team:hover .bx-name {
+  color: var(--accent);
+}
+
+.bx-wins {
+  font-weight: 700;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+.bx-won .bx-name {
+  font-weight: 700;
+}
+
+.bx-won .bx-wins {
+  color: var(--accent);
+}
+
+.bx-lost {
+  opacity: 0.5;
+}
+
+.bx-side.followed .bx-name {
+  color: var(--gold);
+}
+
+.bx-empty {
+  min-height: 30px;
+}
+
+.bx-feeder {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.bx-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 5px;
+  margin-top: 3px;
+  border-top: 1px solid var(--border);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.bx-live {
+  color: var(--live);
+  font-weight: 700;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dot-w {
+  background: var(--viz-pos);
+}
+.dot-l {
+  background: var(--viz-neg);
+}
+.dot-empty {
+  border: 1px solid var(--border);
+}
+
+.bx-field {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  columns: 2;
+  font-size: 13px;
+}
+
+.bx-field li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 0;
+  break-inside: avoid;
+}
+
+.bx-field-seed {
+  width: 16px;
+  color: var(--text-faint);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bx-field .dim {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Radial bracket ─────────────────────────────────────────────────── */
+.rb {
+  position: relative;
+  width: min(100%, 620px);
+  aspect-ratio: 1;
+  margin: 0 auto 16px;
+}
+
+.rb-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.rb-lines line {
+  stroke: var(--border);
+  stroke-width: 0.4;
+}
+
+.rb-ring {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 0.2;
+  opacity: 0.5;
+}
+
+.rb-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  padding: 5px;
+  cursor: pointer;
+  transition: border-color 0.15s, opacity 0.15s, transform 0.15s;
+}
+
+.rb-node:hover {
+  border-color: var(--accent);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+.rb-node.is-dim {
+  opacity: 0.32;
+}
+
+.rb-node.followed {
+  border-color: var(--gold);
+  border-width: 2px;
+}
+
+.rb-node.is-empty {
+  cursor: default;
+  background: var(--bg-soft);
+}
+
+.rb-tbd {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.rb-seed {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.rb-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 2px solid var(--gold);
+}
+
+.rb-trophy {
+  font-size: 30px;
+}
+
+.rb-champ {
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .bx {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .bx-col-final {
+    order: -1;
+  }
+}
+
+/* ── Game detail modal ──────────────────────────────────────────────── */
+.modal-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  overflow-y: auto;
+}
+
+.modal {
+  position: relative;
+  width: min(100%, 560px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px 20px;
+}
+
+.modal-x {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: none;
+  border: 0;
+  color: var(--text-dim);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.modal-x:hover {
+  background: var(--bg-soft);
+  color: var(--text);
+}
+
+.md-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.md-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.md-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 96px;
+}
+
+.md-score {
+  font-size: 27px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.md-time {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.md-state {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.md-facts {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0 0;
+}
+
+.md-facts > div {
+  display: grid;
+  grid-template-columns: 68px 1fr;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.md-facts dt {
+  color: var(--text-faint);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-top: 1px;
+}
+
+.md-facts dd {
+  margin: 0;
+}
+
+/* Line score */
+.linescore {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+
+.linescore th {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  font-weight: 600;
+  padding: 4px 8px;
+  text-align: center;
+}
+
+.linescore tbody th {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 6px 8px 6px 0;
+}
+
+.linescore td {
+  padding: 6px 8px;
+  text-align: center;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+}
+
+/* The higher scorer of each quarter, so the row reads as momentum. */
+.linescore .q-won {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.linescore .q-total {
+  font-weight: 700;
+  color: var(--text);
+  border-left: 1px solid var(--border);
+}
+
+/* Game leaders */
+.leaders-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.gl-team {
+  background: var(--bg-soft);
+  border-radius: 9px;
+  padding: 8px 10px;
+}
+
+.gl-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+  padding-bottom: 5px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.gl-row {
+  display: grid;
+  grid-template-columns: 30px 1fr auto;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 12.5px;
+  padding: 2px 0;
+}
+
+.gl-cat {
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+
+.gl-who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gl-v {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.md-sub {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+  margin: 18px 0 8px;
+}
+
+.tale {
+  display: grid;
+  gap: 2px;
+}
+
+.tale-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--bg-soft);
+  font-size: 13px;
+}
+
+.tale-val {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+.tale-row .tale-val:first-child {
+  text-align: right;
+}
+
+/* The stronger side of each comparison, so the row is scannable. */
+.tale-val.better {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.tale-label {
+  font-size: 11px;
+  color: var(--text-faint);
+  text-align: center;
+  min-width: 116px;
+}
+
+.md-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 560px) {
+  .tale-label {
+    min-width: 84px;
+  }
+
+  .modal {
+    padding: 16px 14px 18px;
+  }
+}
+
+/* ── Team panel ─────────────────────────────────────────────────────── */
+.tp-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tp-head > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.tp-name {
+  font-size: 19px;
+}
+
+.tp-sub {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.tp-stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.tp-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 4px;
+  background: var(--bg-soft);
+  border-radius: 9px;
+}
+
+.tp-stat-v {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-stat-l {
+  font-size: 10px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tp-form {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tp-chip {
+  width: 25px;
+  height: 25px;
+  border-radius: 7px;
+  border: 0;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+}
+
+.tp-chip.w {
+  background: var(--win);
+}
+.tp-chip.l {
+  background: var(--loss);
+}
+.tp-chip:hover {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tp-roster {
+  display: grid;
+  gap: 2px;
+}
+
+.tp-player {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 8px;
+  background: var(--bg-soft);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.tp-p-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tp-p-line {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tp-p-line i {
+  font-style: normal;
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+@media (max-width: 560px) {
+  .tp-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── Toasts ─────────────────────────────────────────────────────────── */
+.toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(320px, calc(100vw - 32px));
+}
+
+.toast {
+  display: flex;
+  align-items: stretch;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  animation: toast-in 0.22s ease-out;
+}
+
+.toast-final {
+  border-left-color: var(--win);
+}
+.toast-nailbiter {
+  border-left-color: var(--live);
+}
+.toast-lead-change {
+  border-left-color: var(--viz-pos);
+}
+
+.toast-body {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  padding: 9px 4px 9px 11px;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toast-icon {
+  font-size: 16px;
+}
+
+.toast-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.toast-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.toast-teams {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toast-x {
+  background: none;
+  border: 0;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.toast-x:hover {
+  color: var(--text);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (max-width: 560px) {
+  .toasts {
+    left: 16px;
+    right: 16px;
+    max-width: none;
+  }
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+.foot {
+  margin-top: 36px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+
+.foot-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.foot a {
+  color: var(--accent);
+}
+
+.disclaimer,
+.credit {
+  margin: 0;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (min-width: 860px) {
+  .grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .hide-sm {
+    display: none;
+  }
+
+  /* Give the diverging bars the full row on a phone; scored/allowed is detail that
+     the standings table already carries. */
+  .margin-row {
+    grid-template-columns: 92px 1fr;
+  }
+
+  .margin-split {
+    display: none;
+  }
+
+  .tiles {
+    grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+  }
+
+  .bx-field {
+    columns: 1;
+  }
+
+  .game {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .game-when {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .game-meta {
+    grid-column: 1;
+  }
+
+  .side-loc {
+    display: none;
+  }
+
+  .brand h1 {
+    font-size: 21px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   NFL additions — week-number axis, single-elimination bracket, division groups.
+   Appended for the-nfl-schedule; the classes above are the shared family styles.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Week view: number axis + bye strip ─────────────────────────────────── */
+.wk-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 10px 0 4px;
+}
+.wk-pill {
+  min-width: 30px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.wk-pill:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.wk-pill.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+.wk-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.wk-bye {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.wk-bye-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.wk-bye-teams {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.wk-bye-logo {
+  opacity: 0.75;
+}
+.wk-bye-logo:hover {
+  opacity: 1;
+}
+
+/* ── Single-elimination bracket ─────────────────────────────────────────── */
+.bx-bracket {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+}
+.bx-conf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.bx-conf-label,
+.bx-sb-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  font-weight: 700;
+  text-align: center;
+}
+.bx-conf-nfc .bx-conf-label {
+  text-align: center;
+}
+.bx-conf-rounds {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bx-conf-nfc .bx-conf-rounds {
+  flex-direction: row-reverse;
+}
+.bx-conf-rounds .bx-col {
+  justify-content: center;
+  min-width: 148px;
+}
+.bx-match {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 6px 8px 5px;
+}
+.bx-match-proj {
+  border-style: dashed;
+}
+.bx-match-proj .bx-seed,
+.bx-match-proj .bx-name {
+  color: var(--text-faint);
+}
+.bx-match-live {
+  border-color: var(--live);
+}
+.bx-match-done {
+  border-color: var(--border);
+}
+.bx-score {
+  font-weight: 700;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+  padding-left: 6px;
+}
+.bx-won .bx-score {
+  color: var(--accent);
+}
+.bx-match-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 5px;
+  margin-top: 3px;
+  border-top: 1px solid var(--border);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+.bx-match-status {
+  color: var(--live);
+  font-weight: 700;
+}
+.bx-bye {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--bg-soft);
+  border: 1px dashed var(--border);
+  border-radius: 11px;
+}
+.bx-bye-tag {
+  margin-left: auto;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+.bx-sb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+.bx-sb .bx-match {
+  border-color: var(--gold);
+  min-width: 150px;
+}
+.bx-sb-champ {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  color: var(--gold);
+  text-align: center;
+  font-size: 13px;
+}
+
+/* ── Division / leader groups ────────────────────────────────────────────── */
+.conf-group {
+  margin-bottom: 22px;
+}
+.conf-group-title {
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  font-weight: 700;
+  margin: 4px 0 10px;
+}
+.leaders-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.tp-chip.t {
+  background: var(--gold);
+  color: #1a1204;
+}
+
+@media (max-width: 640px) {
+  .bx-bracket {
+    justify-content: flex-start;
+  }
+  .bx-conf-rounds .bx-col {
+    min-width: 130px;
+  }
+}

@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A push that lands while a deploy is running should supersede it, not queue behind
+# it — but never cancel a deploy midway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Runs the full suite AND writes public/coverage.json for the README badge.
+      # Replaces a separate `npm test` step so the suite isn't run twice.
+      - run: npm run coverage:badge
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  # Deploys only from main, and only after tests pass — a red build never ships.
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  # Netlify mirrors the same build. Skipped entirely until NETLIFY_AUTH_TOKEN exists,
+  # so the workflow stays green on a fork or before the secret is added.
+  netlify:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # Declared at JOB level deliberately. A step's own `env:` block is not in scope
+    # for that step's `if:`, so gating on it there would skip the deploy forever —
+    # green, and silently doing nothing, even once the secret exists.
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ vars.NETLIFY_SITE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run coverage:badge # writes public/coverage.json for the README badge
+      - run: npm run build
+      - name: Deploy
+        if: env.NETLIFY_AUTH_TOKEN != ''
+        run: npx netlify-cli@17 deploy --prod --dir dist
+      - name: Note why the deploy was skipped
+        if: env.NETLIFY_AUTH_TOKEN == ''
+        run: echo "::notice::Netlify deploy skipped — add the NETLIFY_AUTH_TOKEN repository secret to enable it."
+
+  # The data scripts use Node built-ins only, so they run on a bare checkout with no
+  # install step. This job guards that property — if someone adds an npm import to a
+  # script, the nightly refresh would break silently at 6am instead of here.
+  scripts-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Scripts must not import from node_modules
+        run: |
+          if grep -rnE "^\s*import .* from ['\"][^.n]" scripts/ | grep -v "node:"; then
+            echo "::error::scripts/ may only import Node built-ins (node:*) or relative paths"
+            exit 1
+          fi
+          echo "OK — scripts/ depends only on Node built-ins"

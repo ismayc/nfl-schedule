@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="The NFL Schedule">
+  <rect width="64" height="64" rx="14" fill="#0b1220"/>
+  <g transform="rotate(-38 32 32)">
+    <ellipse cx="32" cy="32" rx="20" ry="12" fill="none" stroke="#4f9dff" stroke-width="3.2"/>
+    <path d="M16 32h32" stroke="#4f9dff" stroke-width="3"/>
+    <path d="M27 32h10M29 28.5h6M29 35.5h6" stroke="#4f9dff" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>

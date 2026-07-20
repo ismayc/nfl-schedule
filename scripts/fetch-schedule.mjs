@@ -10,7 +10,7 @@
 
 import { writeFile, mkdir } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { SITE, CORE, WEB, getJson, fetchTeams, broadcastNames, monthRange, banner } from './lib/espn.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -89,13 +89,13 @@ function normalizeEvent(ev) {
   }
 }
 
-async function fetchSchedule(teams) {
+export async function fetchSchedule(teams, season = SEASON) {
   const byId = new Map()
   const results = await Promise.all(
     teams.map(async (t) => {
       const evs = []
       for (const type of [2, 3]) {
-        const d = await getJson(`${SITE}/${ESPN_PATH}/teams/${t.abbr}/schedule?season=${SEASON}&seasontype=${type}`)
+        const d = await getJson(`${SITE}/${ESPN_PATH}/teams/${t.abbr}/schedule?season=${season}&seasontype=${type}`)
         evs.push(...(d.events || []))
       }
       return evs
@@ -353,7 +353,13 @@ async function main() {
   console.log('Done.')
 }
 
-main().catch((err) => {
-  console.error(`\nfetch-schedule failed:\n${err.message}`)
-  process.exit(1)
-})
+// Only run the generator when invoked directly (node scripts/fetch-schedule.mjs) — the
+// test fixture builder imports fetchSchedule/normalizeEvent without triggering a write.
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((err) => {
+    console.error(`\nfetch-schedule failed:\n${err.message}`)
+    process.exit(1)
+  })
+}
+
+export { normalizeEvent }

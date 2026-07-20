@@ -1,0 +1,15 @@
+{
+  "name": "The NFL Schedule",
+  "short_name": "NFL",
+  "description": "Every NFL game in your timezone — week by week, live scores, standings, playoff bracket, and stats.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

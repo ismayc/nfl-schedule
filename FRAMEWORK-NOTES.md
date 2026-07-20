@@ -71,4 +71,40 @@ Status key: 🔴 not yet in framework · 🟡 partially there · 🟢 confirmed 
   (`seedConference`) is NFL-specific and belongs behind an adapter flag like
   `postseason.seedBy: 'division-winners-then-wildcards'`.
 
-## (more added as the build proceeds)
+## Components / views
+
+- 🔴 **`WeekView` needs two implementations, not one.** The WNBA's WeekView is a
+  Sunday-anchored 7-day calendar grid; NFL's is a Week-NUMBER axis (pills 1–18, bye-team
+  strip, day sub-groups within a week). These share almost no code. The framework should
+  ship both as adapter-selected variants keyed on `timeAxis` ('date' vs 'week').
+
+- 🟡 **The stylesheet is remarkably league-agnostic** — copying `index.css` verbatim and
+  changing only the `--accent` tokens (WNBA orange → NFL blue) covered ~95% of the UI. The
+  only additions were genuinely new *structures* (week pills, single-elim bracket, division
+  groups). Strong signal that `core/index.css` should be extracted with accent tokens as
+  the single per-league override.
+
+- 🟡 **New CSS surface area is all in the two structurally-new views** (WeekView,
+  single-elim Bracket) plus small division/leader group wrappers. Everything else reused
+  the family class names 1:1. When these views land in `core/`, their CSS goes with them.
+
+- 🟢 **Empty-state discipline matters for an off-season launch.** Because 2026 ships with
+  zero played games, every view had to render a real empty state (standings all 0-0-0,
+  "leaders appear once the season starts", bracket placeholder). This is a good forcing
+  function the mid-season WNBA build never exercised — the framework's view contract should
+  require an explicit empty state, not assume populated data.
+
+## Testing
+
+- 🟢 **Real completed season as the truth fixture works exactly as PLAYBOOK §7 says.** The
+  2025 fixture (272 regular + 13 postseason) caught the seed-order/bracket-display coupling
+  bug (a projected WC pairing that didn't match the actual game) that a synthetic fixture
+  would never have surfaced. Standings W-L-T and the full bracket-to-champion are asserted
+  against it.
+
+- 🔴 **`test/fixtures/build.mjs` reaches into `scripts/fetch-schedule.mjs`** for its
+  `normalizeEvent`/`fetchSchedule` — which meant guarding the generator's `main()` behind
+  an `import.meta.url === argv` check so importing it doesn't trigger a write. The framework
+  generator should export its normalizer/fetch as a library from the start, with a thin CLI
+  wrapper, so fixture builders and the refresh job share one code path.
+

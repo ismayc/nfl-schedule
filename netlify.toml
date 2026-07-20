@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Single-page app: every path serves the same document, since view state lives in
+# the query string rather than the path.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

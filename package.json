@@ -1,0 +1,35 @@
+{
+  "name": "the-nfl-schedule",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "An unofficial, timezone-aware viewer for the NFL season — schedule, week-by-week, standings, playoff bracket, and league leaders.",
+  "author": "Chester Ismay",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "coverage:badge": "vitest run --coverage && node scripts/coverage-badge.mjs",
+    "fetch:schedule": "node scripts/fetch-schedule.mjs --season 2026",
+    "check:schedule": "node scripts/check-schedule.mjs --season 2026",
+    "verify:live": "node scripts/verify-live.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.5.2",
+    "@vitejs/plugin-react": "^4.3.2",
+    "@vitest/coverage-v8": "^2.1.2",
+    "jsdom": "^25.0.1",
+    "vite": "^5.4.8",
+    "vitest": "^2.1.2"
+  }
+}

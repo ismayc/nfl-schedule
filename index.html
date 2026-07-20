@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>The NFL Schedule — every game in your timezone</title>
+    <meta
+      name="description"
+      content="An unofficial NFL season viewer: the full schedule in your timezone, week by week, live scores, conference standings, the playoff bracket, and league leaders."
+    />
+    <meta name="theme-color" content="#0b1220" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="The NFL Schedule" />
+    <meta
+      property="og:description"
+      content="Every NFL game in your timezone — week by week, live scores, standings, playoff bracket, and stats."
+    />
+    <meta property="og:image" content="./og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <script>
+      // Resolve the theme before first paint so there is no flash of the wrong one.
+      // System preference by default; an explicit choice wins and persists.
+      ;(function () {
+        try {
+          var t = localStorage.getItem('nfl:theme')
+          if (!t)
+            t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+          document.documentElement.dataset.theme = t
+        } catch (e) {
+          document.documentElement.dataset.theme = 'dark'
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

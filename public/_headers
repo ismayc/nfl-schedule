@@ -1,0 +1,4 @@
+/manifest.webmanifest
+  Content-Type: application/manifest+json
+/logos/*
+  Cache-Control: public, max-age=31536000, immutable

@@ -12,7 +12,7 @@ import StatsView from './components/StatsView.jsx'
 import Bracket from './components/Bracket.jsx'
 import GameDetail from './components/GameDetail.jsx'
 import WeekView from './components/WeekView.jsx'
-import { downloadIcs } from './utils/ics.js'
+import CalendarModal from './components/CalendarModal.jsx'
 import Toasts from './components/Toasts.jsx'
 import TeamPanel from './components/TeamPanel.jsx'
 import { detectEvents, eventKey } from './services/alerts.js'
@@ -48,6 +48,7 @@ export default function App() {
   })
   const [toasts, setToasts] = useState([])
   const [teamPanel, setTeamPanel] = useState(null)
+  const [showCalendar, setShowCalendar] = useState(false)
   const prevGames = useRef(null)
 
   const { count: followedCount, followed } = useFollow()
@@ -150,8 +151,6 @@ export default function App() {
     }
     return keys.size
   }, [scheduleGames, tz])
-
-  const teamName = (t) => TEAMS.find((x) => x.abbr === t)?.displayName
 
   return (
     <div className="app">
@@ -266,15 +265,10 @@ export default function App() {
           )}
           <button
             className="chip"
-            onClick={() =>
-              downloadIcs(scheduleGames, {
-                filename: team ? `${LEAGUE.id}-${team.toLowerCase()}.ics` : `${LEAGUE.id}-${SEASON}.ics`,
-                name: team ? `${teamName(team)} ${SEASON}` : `${LEAGUE.name} ${SEASON}`,
-              })
-            }
-            title="Download these games as a calendar file"
+            onClick={() => setShowCalendar(true)}
+            title="Subscribe to or download a calendar of these games"
           >
-            📅 Export{scheduleGames.length !== games.length ? ` (${scheduleGames.length})` : ''}
+            📅 Calendar
           </button>
         </div>
       )}
@@ -328,6 +322,14 @@ export default function App() {
         onClose={() => setDetail(null)}
         onPickTeam={(t) => (setTeam(t), setView('schedule'))}
       />
+
+      {showCalendar && (
+        <CalendarModal
+          games={games}
+          filtered={scheduleGames}
+          onClose={() => setShowCalendar(false)}
+        />
+      )}
 
       <footer className="foot">
         <p className="disclaimer">

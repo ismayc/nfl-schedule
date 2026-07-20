@@ -180,19 +180,24 @@ describe('App — storage failures are swallowed', () => {
   })
 })
 
-describe('App — calendar export', () => {
-  it('exports the full season with no count suffix', async () => {
+describe('App — calendar', () => {
+  it('opens the calendar modal and downloads the full season', async () => {
     await mount()
-    await userEvent.click(screen.getByRole('button', { name: /^📅 Export$/ }))
+    await userEvent.click(screen.getByRole('button', { name: '📅 Calendar' }))
+    const dialog = screen.getByRole('dialog', { name: 'Calendar' })
+    await userEvent.click(within(dialog).getByRole('button', { name: /All games \(\d+\)/ }))
     expect(globalThis.URL.createObjectURL).toHaveBeenCalled()
   })
 
-  it('exports a team subset with a count suffix', async () => {
+  it('offers a current-filter download once a team filter is set, then closes', async () => {
     await mount()
     await userEvent.selectOptions(screen.getByLabelText('Team'), 'KC')
-    const btn = await screen.findByRole('button', { name: /📅 Export \(\d+\)/ })
-    await userEvent.click(btn)
+    await userEvent.click(screen.getByRole('button', { name: '📅 Calendar' }))
+    const dialog = screen.getByRole('dialog', { name: 'Calendar' })
+    await userEvent.click(within(dialog).getByRole('button', { name: /Current filter \(\d+\)/ }))
     expect(globalThis.URL.createObjectURL).toHaveBeenCalled()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog', { name: 'Calendar' })).not.toBeInTheDocument()
   })
 })
 

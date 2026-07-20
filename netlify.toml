@@ -2,6 +2,16 @@
   command = "npm run build"
   publish = "dist"
 
+[functions]
+  directory = "netlify/functions"
+
+# Pretty URL for the live calendar feed. Order matters: this must sit ABOVE the SPA
+# catch-all, or /*  would swallow /calendar.ics and serve index.html instead.
+[[redirects]]
+  from = "/calendar.ics"
+  to = "/.netlify/functions/calendar"
+  status = 200
+
 # Single-page app: every path serves the same document, since view state lives in
 # the query string rather than the path.
 [[redirects]]

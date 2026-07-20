@@ -16,6 +16,10 @@ export default defineConfig({
       reporter: ['text', 'json-summary', 'json'],
       include: ['src/**/*.{js,jsx}'],
       exclude: ['src/main.jsx', 'src/data/**'],
+      // Measure every included file, not only imported ones, so an untested module
+      // counts as a gap. Thresholds enforce the family's 100% bar (PLAYBOOK §8).
+      all: true,
+      thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
     },
   },
 })

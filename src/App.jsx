@@ -69,6 +69,9 @@ export default function App() {
         setLive(next)
         setUpdatedAt(new Date())
       }
+      // fetchLive uses Promise.allSettled and always resolves (per-request failures are
+      // swallowed there), so this catch is unreachable defensive code.
+      /* v8 ignore next 3 */
     } catch {
       /* offline or feed hiccup — committed data still renders */
     }

@@ -6,8 +6,11 @@ import {
   divisionStandings,
   conferenceSeeds,
   headToHead,
+  scheduledGames,
+  playoffPicture,
   DIVISIONS,
 } from '../src/utils/standings.js'
+import { GAMES as GAMES_2026 } from '../src/data/schedule.js'
 
 // Real completed season as the truth fixture (PLAYBOOK §7): it carries the edge cases —
 // ties, identical-record tiebreaks — a synthetic fixture wouldn't reproduce.
@@ -109,5 +112,128 @@ describe('head-to-head', () => {
     const met = headToHead(GAMES_2025, 'KC', 'DEN')
     expect(met).not.toBeNull()
     expect(met.w + met.l + met.t).toBeGreaterThan(0)
+  })
+})
+
+describe('computeStandings edge cases', () => {
+  const game = (over) => ({
+    id: String(Math.random()),
+    seasonType: 'regular',
+    tip: '2025-09-10T00:00:00.000Z',
+    home: 'KC',
+    away: 'DEN',
+    score: [24, 20],
+    ...over,
+  })
+
+  it('skips a side whose team is not in the league table', () => {
+    // A stray game against an unknown abbreviation is ignored for that side only.
+    const t = computeStandings([game({ home: 'KC', away: 'XXX', score: [30, 10] })])
+    expect(t.KC).toMatchObject({ w: 1, l: 0 })
+    expect(t.XXX).toBeUndefined()
+  })
+
+  it('reads a tie as ending any streak (streak 0)', () => {
+    const t = computeStandings([game({ home: 'KC', away: 'DEN', score: [21, 21] })])
+    expect(t.KC.t).toBe(1)
+    expect(t.KC.streak).toBe(0)
+    expect(t.DEN.streak).toBe(0)
+  })
+
+  it('tolerates a beaten opponent missing from the table when seeding', () => {
+    // Two same-division teams, identical records built entirely against unknown
+    // opponents, force the strength-of-victory step to look those ghosts up.
+    const games = [
+      game({ id: 'a', home: 'BUF', away: 'XXX', score: [20, 10] }),
+      game({ id: 'b', home: 'MIA', away: 'YYY', score: [20, 10] }),
+    ]
+    expect(() => conferenceSeeds(games)).not.toThrow()
+    const afc = conferenceSeeds(games).AFC
+    expect(afc.map((r) => r.abbr)).toContain('BUF')
+    expect(afc.map((r) => r.abbr)).toContain('MIA')
+  })
+})
+
+describe('scheduledGames', () => {
+  const game = (over) => ({
+    id: String(Math.random()),
+    seasonType: 'regular',
+    tip: '2025-09-10T00:00:00.000Z',
+    home: 'KC',
+    away: 'DEN',
+    score: [24, 20],
+    ...over,
+  })
+
+  it('counts every scheduled regular-season appearance per team', () => {
+    const total = scheduledGames([
+      game({ home: 'KC', away: 'DEN' }),
+      game({ home: 'DEN', away: 'KC' }),
+    ])
+    expect(total.KC).toBe(2)
+    expect(total.DEN).toBe(2)
+  })
+
+  it('ignores the postseason and canceled games', () => {
+    const total = scheduledGames([
+      game({ home: 'KC', away: 'DEN' }),
+      game({ home: 'KC', away: 'DEN', seasonType: 'postseason' }),
+      game({ home: 'KC', away: 'DEN', canceled: true }),
+    ])
+    expect(total.KC).toBe(1)
+    expect(total.DEN).toBe(1)
+  })
+
+  it('derives the full 17-game slate from the real season', () => {
+    const total = scheduledGames(GAMES_2025)
+    for (const abbr of Object.keys(total)) expect(total[abbr]).toBe(17)
+  })
+})
+
+describe('playoffPicture', () => {
+  it('marks clinched and eliminated teams once a full season is in', () => {
+    const picture = playoffPicture(GAMES_2025)
+    for (const conf of ['AFC', 'NFC']) {
+      const rows = picture[conf]
+      // With every game played there is no remaining schedule.
+      expect(rows.every((r) => r.remaining === 0)).toBe(true)
+      // Both outcomes appear: the top of the table has clinched, the bottom is out —
+      // and both the clinched and eliminated flags are exercised in each direction.
+      expect(rows.some((r) => r.clinched)).toBe(true)
+      expect(rows.some((r) => !r.clinched)).toBe(true)
+      expect(rows.some((r) => r.eliminated)).toBe(true)
+      expect(rows.some((r) => !r.eliminated)).toBe(true)
+    }
+  })
+
+  it('clinches and eliminates nobody before any game is played', () => {
+    const picture = playoffPicture(GAMES_2026) // committed 2026: scheduled, unplayed
+    for (const conf of ['AFC', 'NFC']) {
+      const rows = picture[conf]
+      expect(rows.every((r) => r.clinched === false)).toBe(true)
+      expect(rows.every((r) => r.eliminated === false)).toBe(true)
+      // Remaining is the whole 17-game slate.
+      expect(rows.every((r) => r.remaining > 0)).toBe(true)
+    }
+  })
+
+  it('treats a team with no scheduled games as having none remaining', () => {
+    // A tiny slate: only KC and DEN appear in the schedule, so every other team is
+    // absent from the scheduled-games totals and must not go negative.
+    const picture = playoffPicture([
+      {
+        id: '1',
+        seasonType: 'regular',
+        tip: '2025-09-10T00:00:00.000Z',
+        home: 'KC',
+        away: 'DEN',
+        score: [24, 20],
+      },
+    ])
+    const all = [...picture.AFC, ...picture.NFC]
+    expect(all.every((r) => r.remaining >= 0)).toBe(true)
+    // The two teams that did play show one fewer remaining than scheduled (0).
+    const kc = picture.AFC.find((r) => r.abbr === 'KC')
+    expect(kc.remaining).toBe(0)
   })
 })

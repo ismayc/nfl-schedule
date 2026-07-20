@@ -1,13 +1,66 @@
 import { useMemo } from 'react'
-import { dayKey, dayLabel } from '../utils/time.js'
+import { dayKey, formatTime } from '../utils/time.js'
+import { LEAGUE } from '../config/league.js'
 import { TEAMS } from '../data/teams.js'
+import { useFollow } from '../context/follow.jsx'
 import TeamLogo from './TeamLogo.jsx'
-import GameCard from './GameCard.jsx'
 
 // NFL's primary axis is the week number, not a weekday grid. Regular season is 18 weeks.
 const WEEKS = Array.from({ length: 18 }, (_, i) => i + 1)
 
+// Kickoff windows, bucketed by the Eastern-time hour — the way an NFL week is actually
+// consumed. Sunday spans all three; Thursday/Monday are single night games.
+const ET_HOUR = (iso) =>
+  Number(
+    new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', hour12: false }).format(
+      new Date(iso)
+    )
+  ) % 24
+const SLOTS = [
+  { key: 'early', label: 'Early', in: (h) => h < 15 },
+  { key: 'late', label: 'Afternoon', in: (h) => h >= 15 && h < 18 },
+  { key: 'night', label: 'Night', in: () => true }, // catch-all: anything at/after 6pm ET
+]
+const slotKeyOf = (iso) => SLOTS.find((s) => s.in(ET_HOUR(iso))).key
+
+function WkCell({ game, tz, hideScores, followed, onOpen }) {
+  const final = !!game.score
+  const [hs, as] = game.score || [null, null]
+  const mine = followed.has(game.home) || followed.has(game.away)
+  const label = game.postponed
+    ? 'Postponed'
+    : game.canceled
+      ? 'Canceled'
+      : game.live
+        ? game.statusLabel || 'Live'
+        : final
+          ? `Final${game.ot ? '/OT' : ''}`
+          : formatTime(game.tip, tz)
+
+  const side = (abbr, mineScore, won) => (
+    <span className={`wkg-row ${won ? 'won' : ''}`}>
+      <TeamLogo abbr={abbr} size={18} />
+      <b className="wkg-abbr">{abbr}</b>
+      {final && !hideScores && <em className="wkg-score">{mineScore}</em>}
+    </span>
+  )
+
+  return (
+    <button
+      type="button"
+      className={`wkg-cell ${mine ? 'is-mine' : ''} ${game.live ? 'is-live' : ''}`}
+      onClick={() => onOpen?.(game)}
+    >
+      {side(game.away, as, final && as > hs)}
+      {side(game.home, hs, final && hs > as)}
+      <span className={`wkg-foot ${game.live ? 'is-live' : ''}`}>{label}</span>
+    </button>
+  )
+}
+
 export default function WeekView({ games, tz, hideScores, week, onWeekChange, onOpen }) {
+  const { followed } = useFollow()
+
   // Regular season only — postseason carries no week number and lives in the bracket.
   const byWeek = useMemo(() => {
     const map = new Map()
@@ -23,8 +76,7 @@ export default function WeekView({ games, tz, hideScores, week, onWeekChange, on
   // last week that has games. Computed locally; the parent isn't told on mount.
   const defaultWeek = useMemo(() => {
     for (const w of WEEKS) {
-      const list = byWeek.get(w)
-      if (list?.some((g) => g.score == null)) return w
+      if (byWeek.get(w)?.some((g) => g.score == null)) return w
     }
     for (let i = WEEKS.length - 1; i >= 0; i--) {
       if (byWeek.get(WEEKS[i])?.length > 0) return WEEKS[i]
@@ -35,16 +87,36 @@ export default function WeekView({ games, tz, hideScores, week, onWeekChange, on
   const selected = week ?? defaultWeek
   const weekGames = byWeek.get(selected) || []
 
-  // Group the selected week's games by viewer-day: days ascending, games by kickoff.
-  const days = useMemo(() => {
-    const map = new Map()
+  // Day columns for the selected week: one per game-day (Thu · Sat · Sun · Mon), and
+  // within each, the games grouped by kickoff window so the busy Sunday slate reads as
+  // early / afternoon / night rather than one long stack.
+  const columns = useMemo(() => {
+    const byDay = new Map()
     for (const g of weekGames) {
       const key = dayKey(g.tip, tz)
-      if (!map.has(key)) map.set(key, [])
-      map.get(key).push(g)
+      if (!byDay.has(key)) byDay.set(key, [])
+      byDay.get(key).push(g)
     }
-    for (const list of map.values()) list.sort((a, b) => a.tip.localeCompare(b.tip))
-    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b))
+    return [...byDay.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, dayGames]) => {
+        dayGames.sort((a, b) => a.tip.localeCompare(b.tip))
+        const first = dayGames[0].tip
+        const slots = SLOTS.map((s) => ({
+          ...s,
+          games: dayGames.filter((g) => slotKeyOf(g.tip) === s.key),
+        })).filter((s) => s.games.length > 0)
+        return {
+          key,
+          dow: new Intl.DateTimeFormat(LEAGUE.locale, { timeZone: tz, weekday: 'long' }).format(new Date(first)),
+          date: new Intl.DateTimeFormat(LEAGUE.locale, { timeZone: tz, month: 'short', day: 'numeric' }).format(
+            new Date(first)
+          ),
+          count: dayGames.length,
+          slots,
+          multiSlot: slots.length > 1,
+        }
+      })
   }, [weekGames, tz])
 
   // Any team without a game this week is on bye. (Byes begin around week 5.)
@@ -61,7 +133,7 @@ export default function WeekView({ games, tz, hideScores, week, onWeekChange, on
   const canNext = selected < WEEKS[WEEKS.length - 1]
 
   return (
-    <section className="view schedule">
+    <section className="view week-view">
       <div className="view-head">
         <div>
           <h2>Week {selected}</h2>
@@ -70,20 +142,10 @@ export default function WeekView({ games, tz, hideScores, week, onWeekChange, on
           </p>
         </div>
         <div className="wk-nav">
-          <button
-            className="ghost"
-            onClick={() => onWeekChange?.(selected - 1)}
-            disabled={!canPrev}
-            aria-label="Previous week"
-          >
+          <button className="ghost" onClick={() => onWeekChange?.(selected - 1)} disabled={!canPrev} aria-label="Previous week">
             ‹
           </button>
-          <button
-            className="ghost"
-            onClick={() => onWeekChange?.(selected + 1)}
-            disabled={!canNext}
-            aria-label="Next week"
-          >
+          <button className="ghost" onClick={() => onWeekChange?.(selected + 1)} disabled={!canNext} aria-label="Next week">
             ›
           </button>
         </div>
@@ -114,20 +176,25 @@ export default function WeekView({ games, tz, hideScores, week, onWeekChange, on
         </div>
       )}
 
-      {days.length > 0 ? (
-        days.map(([key, dayGames]) => (
-          <div className="day" key={key}>
-            <h3 className="day-head">
-              <span>{dayLabel(key, tz)}</span>
-              <span className="day-count">{dayGames.length} game{dayGames.length === 1 ? '' : 's'}</span>
-            </h3>
-            <div className="day-games">
-              {dayGames.map((g) => (
-                <GameCard key={g.id} game={g} tz={tz} hideScores={hideScores} onOpen={onOpen} />
+      {columns.length > 0 ? (
+        <div className="wkg-grid">
+          {columns.map((col) => (
+            <div className="wkg-col" key={col.key}>
+              <div className="wkg-head">
+                <span className="wkg-dow">{col.dow}</span>
+                <span className="wkg-date">{col.date}</span>
+              </div>
+              {col.slots.map((slot) => (
+                <div className="wkg-slot" key={slot.key}>
+                  {col.multiSlot && <div className="wkg-slot-label">{slot.label}</div>}
+                  {slot.games.map((g) => (
+                    <WkCell key={g.id} game={g} tz={tz} hideScores={hideScores} followed={followed} onOpen={onOpen} />
+                  ))}
+                </div>
               ))}
             </div>
-          </div>
-        ))
+          ))}
+        </div>
       ) : (
         <p className="empty">No games this week.</p>
       )}

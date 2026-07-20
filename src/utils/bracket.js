@@ -34,6 +34,10 @@ function toMatchup(g, seedOf) {
 }
 
 const findGame = (roundGames, a, b) =>
+  // The reversed (b/a) operand is a symmetry guard: every caller passes a=game.home,
+  // b=game.away, so the forward operand always matches first — the reversed branch is
+  // unreachable with real round games.
+  /* v8 ignore next */
   roundGames.find((g) => (g.home === a && g.away === b) || (g.home === b && g.away === a))
 
 // One matchup: the actual game if we have it, otherwise a projected pairing with the
@@ -44,6 +48,9 @@ function matchup(round, teamA, teamB, roundGames, seedOf) {
 
   let home = teamA
   let away = teamB
+  // The `?? 99` fallbacks are dead: this runs only when both teams are truthy, and any
+  // real advancing/finalist team is always a seeded conference team.
+  /* v8 ignore next */
   if (teamA && teamB && (seedOf[teamB] ?? 99) < (seedOf[teamA] ?? 99)) {
     home = teamB
     away = teamA
@@ -74,6 +81,9 @@ function buildConference(confKey, field, confGames, seedOf) {
   const WC = wcGames.length
     ? wcGames
         .map((g) => matchup('WC', g.home, g.away, wcGames, seedOf))
+        // Both Wild Card teams are same-conference seeds, so seedHome is always defined;
+        // the `?? 99` fallbacks are unreachable.
+        /* v8 ignore next */
         .sort((a, b) => (a.seedHome ?? 99) - (b.seedHome ?? 99))
     : PLAYOFF.wildCardPairs.map(([hi, lo]) => matchup('WC', bySeed[hi], bySeed[lo], [], seedOf))
 

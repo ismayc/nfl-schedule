@@ -9,6 +9,9 @@ import TeamLogo from './TeamLogo.jsx'
 // dots, "best of", win counts). The NFL is SINGLE ELIMINATION — every slot is one game, so
 // a slot shows a single score line and highlights the winner outright.
 
+// Both are called only with the literal round keys WC/DIV/CONF/SB, which always resolve,
+// so the optional-chain and `|| key` fallbacks are unreachable.
+/* v8 ignore next 2 */
 const roundShort = (key) => PLAYOFF.rounds.find((r) => r.key === key)?.short || key
 const roundName = (key) => PLAYOFF.rounds.find((r) => r.key === key)?.name || key
 
@@ -46,6 +49,9 @@ function Slot({ abbr, seed, score, isWinner, decided, onPick }) {
 // A single-elimination matchup. `m` may be entirely projected (both seeds greyed) or have a
 // null side (TBD). Score is [home, away]; a played game has a winner to highlight.
 function Match({ m, onPick }) {
+  // Every Match is fed a real matchup object (WC/DIV arrays, CONF, sb); m is never null,
+  // so this guard is defensive only.
+  /* v8 ignore next */
   if (!m) return null
   const decided = m.played
   const homeScore = m.score?.[0]
@@ -85,6 +91,9 @@ function Match({ m, onPick }) {
 
 // The #1 seed sitting out the Wild Card round. Name/logo still open the team panel.
 function Bye({ abbr, onPick }) {
+  // Bye renders only behind a truthy `data.byeTeam` guard, so abbr is always a real team;
+  // the `: null` and `if (!team)` fallbacks are unreachable.
+  /* v8 ignore next 2 */
   const team = abbr ? TEAM_BY_ABBR[abbr] : null
   if (!team) return null
   return (

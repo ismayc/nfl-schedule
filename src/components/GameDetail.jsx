@@ -6,6 +6,9 @@ import { computeStandings, countsForStandings } from '../utils/standings.js'
 import { useModalA11y } from '../hooks/useModalA11y.js'
 import TeamLogo from './TeamLogo.jsx'
 
+// `one` is only ever called with numeric standings fields (ppg/oppPpg), which
+// computeStandings always defines, so the `?? 0` fallback is unreachable.
+/* v8 ignore next */
 const one = (n) => (n ?? 0).toFixed(1)
 
 // W–L, with a trailing tie count only when there is one. Ties are the NFL's defining

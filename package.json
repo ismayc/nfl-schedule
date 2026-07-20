@@ -12,8 +12,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "coverage:badge": "vitest run --coverage && node scripts/coverage-badge.mjs",
+    "test:coverage": "vitest run --coverage --no-file-parallelism",
+    "coverage:badge": "vitest run --coverage --no-file-parallelism && node scripts/coverage-badge.mjs",
     "fetch:schedule": "node scripts/fetch-schedule.mjs --season 2026",
     "check:schedule": "node scripts/check-schedule.mjs --season 2026",
     "verify:live": "node scripts/verify-live.mjs"

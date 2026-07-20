@@ -11,6 +11,11 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./test/setup.js'],
+    // Coverage runs single-threaded (--no-file-parallelism, see package.json) to dodge a
+    // v8 parallel-temp race; that plus userEvent makes the App interaction tests slow on
+    // CI's shared runners, so the 5s default test timeout is too tight there.
+    testTimeout: 30000,
+    hookTimeout: 30000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'json'],

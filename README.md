@@ -6,7 +6,7 @@ instant and works offline: the whole season is committed as a static snapshot an
 with **zero network requests**, with a live overlay merged on top during games.
 
 - **Live:** [the-nfl-schedule.netlify.app](https://the-nfl-schedule.netlify.app) · [ismayc.github.io/nfl-schedule](https://ismayc.github.io/nfl-schedule)
-- Built on the shared [`sports-viewer-meta`](https://github.com/ismayc/sports-viewer-meta) framework — the fifth app in a family (world-cup, premier-league, WNBA, NBA, NFL).
+- One of a family of timezone-aware sports schedule viewers.
 
 ## How it works
 

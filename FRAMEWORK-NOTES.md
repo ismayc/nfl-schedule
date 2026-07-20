@@ -1,8 +1,8 @@
 # Framework notes — from building `the-nfl-schedule`
 
-Running log of adjustments the shared `sports-viewer-meta` framework should absorb,
-discovered while building the NFL viewer as its first real consumer. Grouped so they can
-be lifted back into the framework's `core/`, `adapters/`, `scripts/`, and PLAYBOOK.
+Running log of adjustments the shared viewer framework should absorb, discovered while
+building the NFL viewer as its first real consumer. Grouped so they can be lifted back into
+the framework's `core/`, `adapters/`, `scripts/`, and PLAYBOOK.
 
 Status key: 🔴 not yet in framework · 🟡 partially there · 🟢 confirmed the framework already handles it
 

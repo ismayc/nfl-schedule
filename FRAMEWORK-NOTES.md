@@ -46,4 +46,29 @@ Status key: 🔴 not yet in framework · 🟡 partially there · 🟢 confirmed 
   single-elim, 7-seeds-per-conference, #1-bye, re-seeding bracket. I'm writing an NFL
   bracket util from scratch; a `core/utils/bracket-single.js` should be extracted from it.
 
+## Standings / seeding
+
+- 🟢 **W-L-T derivation verified exact.** Derived standings match ESPN's own 2025
+  endpoint for all 32 teams (W, L, and T), confirming the ties-aware `pct = (w+t/2)/gp`
+  and the countable-games filter. This is the PLAYBOOK §2 derive-and-diff check, and it
+  passed first try against real data.
+
+- 🟡 **NFL tiebreakers are a genuine framework gap.** A pairwise comparator (what a JS
+  sort gives you) cannot express two official NFL rules: the "common games (min 4)" step
+  and the 3+-team reduction procedure ("if one team wins a step, the others revert to
+  step 1"). My first attempt at common-games actually mis-crowned a division. The pruned
+  chain (h2h → division → conference → SOV → SOS → net points) reproduces the correct
+  playoff field, all 8 division winners, and 12/14 seed positions against 2025 — the miss
+  is an order swap between two identical-record wild cards who both make the field.
+  A `core/utils/tiebreak.js` should offer a *grouped* reduction API (resolve an N-way tie
+  by repeatedly applying an ordered list of criteria and re-partitioning), not a pairwise
+  comparator — and leagues declare their criteria order in the adapter. Until then, seeds
+  are a documented approximation; records are exact.
+
+- 🔴 **Seeding is league-shaped, not generic.** `core/utils/standings.js` `byGroup` ranks
+  within a group, but NFL seeding is "four division winners first (1–4), then wild cards
+  (5–7)" — a two-tier rule the generic ranker doesn't model. The seeding layer
+  (`seedConference`) is NFL-specific and belongs behind an adapter flag like
+  `postseason.seedBy: 'division-winners-then-wildcards'`.
+
 ## (more added as the build proceeds)

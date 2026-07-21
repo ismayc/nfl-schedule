@@ -63,7 +63,7 @@ function Form({ results, onOpen, gamesById }) {
   )
 }
 
-export default function TeamPanel({ abbr, games, tz, hideScores, onClose, onSchedule, onOpenGame }) {
+export default function TeamPanel({ abbr, games, tz, hideScores, onClose, onSchedule, onOpenGame, onPickPlayer }) {
   const ref = useModalA11y(onClose, !!abbr)
   const { isFollowed, toggle } = useFollow()
 
@@ -148,7 +148,9 @@ export default function TeamPanel({ abbr, games, tz, hideScores, onClose, onSche
               {roster.map((p) => (
                 <div className="tp-player" key={p.id}>
                   <span className="tp-p-name">
-                    {p.name}
+                    <button className="lead-player" onClick={() => onPickPlayer?.(p)}>
+                      {p.name}
+                    </button>
                     <span className="lead-pos">{p.pos}</span>
                   </span>
                   <span className="tp-p-line">

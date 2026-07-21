@@ -207,6 +207,20 @@ describe('TeamPanel — interactions', () => {
     expect(container.querySelector('.tp-chip')).toBeInTheDocument()
   })
 
+  it('opens a roster player pop-out via onPickPlayer', async () => {
+    const onPickPlayer = vi.fn()
+    const { container } = open('GB', { onPickPlayer })
+    await userEvent.click(container.querySelector('.tp-p-name .lead-player'))
+    expect(onPickPlayer).toHaveBeenCalledTimes(1)
+    expect(onPickPlayer.mock.calls[0][0]).toMatchObject({ team: 'GB' })
+  })
+
+  it('does not throw clicking a roster player without an onPickPlayer handler', async () => {
+    const { container } = open('GB')
+    await userEvent.click(container.querySelector('.tp-p-name .lead-player'))
+    expect(container.querySelector('.tp-p-name .lead-player')).toBeInTheDocument()
+  })
+
   it('routes to the full schedule and closes', async () => {
     const onSchedule = vi.fn()
     const onClose = vi.fn()

@@ -106,6 +106,23 @@ describe('StatsView — populated (2025 season)', () => {
     expect(onPickTeam).toHaveBeenCalledTimes(3)
     expect(typeof onPickTeam.mock.calls[0][0]).toBe('string')
   })
+
+  it('routes a leaderboard player-name click to onPickPlayer with the full row', async () => {
+    const onPickPlayer = vi.fn()
+    const { container } = renderView({ games: GAMES_2025, onPickPlayer })
+
+    await userEvent.click(container.querySelector('.lead-name .lead-player'))
+
+    expect(onPickPlayer).toHaveBeenCalledTimes(1)
+    // The whole committed row is passed, so the pop-out can render its stat tiles.
+    expect(onPickPlayer.mock.calls[0][0]).toMatchObject({ id: expect.any(String), pos: expect.any(String) })
+  })
+
+  it('does not throw when a player name is clicked without an onPickPlayer handler', async () => {
+    const { container } = renderView({ games: GAMES_2025 })
+    await userEvent.click(container.querySelector('.lead-name .lead-player'))
+    expect(container.querySelector('.lead-player')).toBeInTheDocument()
+  })
 })
 
 describe('StatsView — empty and no-handler paths', () => {

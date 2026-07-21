@@ -102,7 +102,7 @@ const UNITS = [
   { key: 'defense', label: 'Defense' },
 ]
 
-function LeaderBoard({ cat, onPickTeam }) {
+function LeaderBoard({ cat, onPickTeam, onPickPlayer }) {
   const rows = useMemo(() => leaderboard(cat.key, { limit: 5 }), [cat.key])
   const max = rows[0]?.value || 1
   if (rows.length === 0) return null
@@ -121,7 +121,9 @@ function LeaderBoard({ cat, onPickTeam }) {
                 </button>
               </td>
               <td className="lead-name">
-                {p.name}
+                <button className="lead-player" onClick={() => onPickPlayer?.(p)}>
+                  {p.name}
+                </button>
                 <span className="lead-pos">{p.pos}</span>
               </td>
               <td className="lead-bar">
@@ -136,7 +138,7 @@ function LeaderBoard({ cat, onPickTeam }) {
   )
 }
 
-function Leaders({ onPickTeam }) {
+function Leaders({ onPickTeam, onPickPlayer }) {
   // PLAYERS is empty until the season starts, so leaderboard() returns [] for every
   // category. Show one honest line rather than four empty cards.
   const anyData = useMemo(() => LEADER_CATEGORIES.some((c) => leaderboard(c.key, { limit: 1 }).length > 0), [])
@@ -159,7 +161,7 @@ function Leaders({ onPickTeam }) {
             <h3 className="conf-group-title">{u.label} leaders</h3>
             <div className="grid-2">
               {cats.map((c) => (
-                <LeaderBoard key={c.key} cat={c} onPickTeam={onPickTeam} />
+                <LeaderBoard key={c.key} cat={c} onPickTeam={onPickTeam} onPickPlayer={onPickPlayer} />
               ))}
             </div>
           </div>
@@ -306,14 +308,14 @@ function PlayoffRace({ games, onPickTeam }) {
   )
 }
 
-export default function StatsView({ games, tz, onPickTeam }) {
+export default function StatsView({ games, tz, onPickTeam, onPickPlayer }) {
   return (
     <section className="view">
       <div className="view-head">
         <h2>Stats</h2>
       </div>
       <TotalsStrip games={games} tz={tz} />
-      <Leaders onPickTeam={onPickTeam} />
+      <Leaders onPickTeam={onPickTeam} onPickPlayer={onPickPlayer} />
       <MarginChart games={games} onPickTeam={onPickTeam} />
       <PlayoffRace games={games} onPickTeam={onPickTeam} />
     </section>

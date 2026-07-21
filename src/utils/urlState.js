@@ -43,6 +43,10 @@ export function readState(search = window.location.search) {
     // in a shared link works.
     tz: isValidZone(tz) ? tz : null,
     team: p.get('team') || DEFAULTS.team,
+    // A one-shot deep link (the family hub sends these): open straight onto this
+    // game's detail. Read-only — writeState never emits it, so the first state
+    // write returns the URL to plain shareable filter state.
+    game: p.get('game') || '',
     week: Number.isInteger(week) && week >= 1 && week <= 18 ? week : null,
     hide: p.get('hide') === '1',
     mine: p.get('mine') === '1',

@@ -313,3 +313,19 @@ describe('App — the live overlay', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })
+
+describe('game deep link', () => {
+  it('opens straight onto the linked game detail, then drops the one-shot param', async () => {
+    window.history.replaceState(null, '', `/?game=${GAMES[0].id}`)
+    await mount()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    // The param is read-only: the first URL write returns to plain filter state.
+    expect(search().get('game')).toBeNull()
+  })
+
+  it('ignores a deep link to a game not in the committed season', async () => {
+    window.history.replaceState(null, '', '/?game=000000')
+    await mount()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})

@@ -7,6 +7,7 @@ describe('readState', () => {
       view: 'schedule',
       tz: null,
       team: '',
+      game: '',
       week: null,
       hide: false,
       mine: false,
@@ -15,10 +16,11 @@ describe('readState', () => {
   })
 
   it('reads every supported key', () => {
-    expect(readState('?view=stats&tz=America/Chicago&team=KC&week=7&hide=1&mine=1&past=1')).toEqual({
+    expect(readState('?view=stats&tz=America/Chicago&team=KC&game=401800001&week=7&hide=1&mine=1&past=1')).toEqual({
       view: 'stats',
       tz: 'America/Chicago',
       team: 'KC',
+      game: '401800001',
       week: 7,
       hide: true,
       mine: true,
@@ -99,6 +101,7 @@ describe('toSearch', () => {
       view: 'week',
       tz: 'Europe/London',
       team: 'GB',
+      game: '',
       week: 12,
       hide: true,
       mine: true,

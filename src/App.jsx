@@ -39,7 +39,10 @@ export default function App() {
   const [showPast, setShowPast] = useState(initial.past)
   const [live, setLive] = useState(null)
   const [updatedAt, setUpdatedAt] = useState(null)
-  const [detail, setDetail] = useState(null)
+  // A ?game= deep link opens straight onto that game's detail (see urlState.js).
+  const [detail, setDetail] = useState(
+    () => (initial.game && GAMES.find((g) => g.id === initial.game)) || null
+  )
   const [alerts, setAlerts] = useState(() => {
     try {
       return localStorage.getItem(ALERTS_KEY) === '1'

@@ -6,7 +6,7 @@ import { useModalA11y } from '../hooks/useModalA11y.js'
 import TeamLogo from './TeamLogo.jsx'
 
 // Integers stay whole (yards, TDs); rates keep one decimal (passer rating, FG%).
-const fmt = (v) => (typeof v === 'number' && !Number.isInteger(v) ? v.toFixed(1) : v)
+const fmt = (v) => (Number.isInteger(v) ? v : v.toFixed(1))
 
 // First + last initial, for the headshot fallback.
 const initials = (name) =>

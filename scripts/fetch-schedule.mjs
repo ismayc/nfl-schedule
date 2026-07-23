@@ -267,21 +267,27 @@ async function mirrorLogos(teams) {
   await mkdir(join(ROOT, 'public/logos'), { recursive: true })
   let n = 0
   let bytes = 0
+  const grab = async (url, file) => {
+    const res = await fetch(resized(url))
+    if (!res.ok) throw new Error(`logo ${file}: HTTP ${res.status}`)
+    return Buffer.from(await res.arrayBuffer())
+  }
+  const put = async (file, buf) => {
+    await writeFile(join(ROOT, 'public/logos', file), buf)
+    n++
+    bytes += buf.length
+  }
   await Promise.all(
-    teams.flatMap((t) =>
-      [
-        [t.logo, `${t.slug}.png`],
-        [t.logoDark, `${t.slug}-dark.png`],
-      ].map(async ([url, file]) => {
-        if (!url) return
-        const res = await fetch(resized(url))
-        if (!res.ok) throw new Error(`logo ${file}: HTTP ${res.status}`)
-        const buf = Buffer.from(await res.arrayBuffer())
-        await writeFile(join(ROOT, 'public/logos', file), buf)
-        n++
-        bytes += buf.length
-      })
-    )
+    teams.map(async (t) => {
+      if (!t.logo) return
+      const light = await grab(t.logo, `${t.slug}.png`)
+      await put(`${t.slug}.png`, light)
+      // Fall back to the light logo when a team has no ESPN "dark" variant (e.g. an
+      // expansion or relocated team): the dark theme renders `${slug}-dark.png`, so a
+      // missing file shows an invisible logo. A full-colour ball reads fine on dark.
+      const dark = t.logoDark ? await grab(t.logoDark, `${t.slug}-dark.png`) : light
+      await put(`${t.slug}-dark.png`, dark)
+    })
   )
   return { n, kb: Math.round(bytes / 1024) }
 }

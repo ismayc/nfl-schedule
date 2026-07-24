@@ -1543,6 +1543,15 @@ select:hover,
   padding: 18px 20px 20px;
 }
 
+/* On a desktop-sized viewport, widen the game-detail modal (only) so a full box
+   score fits without horizontal scrolling. It stays full-width on phones, and
+   the calendar/services/player modals keep their own narrower widths. */
+@media (min-width: 760px) {
+  .modal.game-modal {
+    width: min(96vw, 900px);
+  }
+}
+
 .modal-x {
   position: absolute;
   top: 10px;

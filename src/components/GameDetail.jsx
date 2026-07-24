@@ -190,7 +190,7 @@ export default function GameDetail({ game, games, tz, hideScores, onClose, onPic
 
   return (
     <div className="modal-wrap" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label="Game detail" ref={ref} tabIndex={-1}>
+      <div className="modal game-modal" role="dialog" aria-modal="true" aria-label="Game detail" ref={ref} tabIndex={-1}>
         <button className="modal-x" onClick={onClose} aria-label="Close">
           ✕
         </button>

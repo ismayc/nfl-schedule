@@ -81,6 +81,58 @@ describe('GameDetail — header', () => {
   })
 })
 
+describe('GameDetail — spoiler reveal', () => {
+  // Two meetings so the season series renders (a drill-score list to unmask), and a
+  // line score on the opened game so its reveal is observable too.
+  const tieGames = [
+    {
+      id: 't1',
+      tip: '2025-09-10T00:00:00.000Z',
+      seasonType: 'regular',
+      week: 1,
+      home: 'KC',
+      away: 'DEN',
+      score: [20, 20],
+      line: { home: [7, 7, 3, 3], away: [7, 0, 10, 3] },
+    },
+    { id: 't2', tip: '2025-11-10T00:00:00.000Z', seasonType: 'regular', week: 9, home: 'DEN', away: 'KC', score: [10, 17] },
+  ]
+
+  it('reveals just this game’s score on demand in spoiler-free mode', async () => {
+    const { container } = render(
+      <GameDetail game={tieGames[0]} games={tieGames} tz={TZ} hideScores onClose={() => {}} />
+    )
+    expect(container.querySelector('.md-score')).toBeNull()
+    expect(container.querySelector('.linescore')).toBeNull()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Reveal score' }))
+    // The score now shows and the button flips to hide.
+    expect(container.querySelector('.md-score').textContent).toBe(
+      `${tieGames[0].score[1]} – ${tieGames[0].score[0]}`
+    )
+    // The rest of the game is unmasked too — line score and the season-series scores.
+    expect(container.querySelector('.linescore')).not.toBeNull()
+    expect([...container.querySelectorAll('.drill-score')].some((el) => el.textContent !== '—')).toBe(true)
+
+    // And it re-masks on demand.
+    await userEvent.click(screen.getByRole('button', { name: 'Hide score' }))
+    expect(container.querySelector('.md-score')).toBeNull()
+  })
+
+  it('offers no reveal when spoiler-free is off', () => {
+    open(regGame)
+    expect(screen.queryByRole('button', { name: /reveal score|hide score/i })).toBeNull()
+  })
+
+  it('offers no reveal for an upcoming game even in spoiler-free mode', () => {
+    open(
+      { id: 'up', tip: '2030-01-01T18:00:00.000Z', seasonType: 'regular', week: 3, home: 'KC', away: 'DEN' },
+      { hideScores: true }
+    )
+    expect(screen.queryByRole('button', { name: /reveal score|hide score/i })).toBeNull()
+  })
+})
+
 describe('GameDetail — line score', () => {
   it('renders four quarters plus a total, bolding the higher scorer', () => {
     const { container } = open(regGame)

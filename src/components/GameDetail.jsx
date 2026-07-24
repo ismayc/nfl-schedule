@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { TEAM_BY_ABBR } from '../data/teams.js'
 import { LEAGUE, PLAYOFF } from '../config/league.js'
 import { formatDate, formatTime, formatZoneAbbr, liveState, countdown } from '../utils/time.js'
@@ -165,6 +165,13 @@ export default function GameDetail({ game, games, tz, hideScores, onClose, onPic
   const ref = useModalA11y(onClose, !!game)
   const table = useMemo(() => computeStandings(games), [games])
   const series = useSeries(games, game?.away, game?.home)
+  const gameId = game?.id
+  // A per-game score reveal for spoiler-free mode: shows THIS game's score inside the
+  // popout without turning spoiler-free off everywhere else. Re-masks when another opens.
+  const [revealed, setRevealed] = useState(false)
+  useEffect(() => {
+    setRevealed(false)
+  }, [gameId])
 
   if (!game) return null
 
@@ -175,7 +182,9 @@ export default function GameDetail({ game, games, tz, hideScores, onClose, onPic
   const A = table[game.away]
   const H = table[game.home]
   const state = liveState(game)
-  const scored = game.score && !hideScores
+  // In spoiler-free mode `hide` stays true until the viewer reveals THIS game's score.
+  const hide = hideScores && !revealed
+  const scored = game.score && !hide
   const [hs, as] = game.score || []
   const isPost = game.seasonType === 'postseason'
 
@@ -210,6 +219,15 @@ export default function GameDetail({ game, games, tz, hideScores, onClose, onPic
                 <span className="md-state">{formatZoneAbbr(game.tip, tz)}</span>
                 {countdown(game.tip) && <span className="md-state">in {countdown(game.tip)}</span>}
               </>
+            )}
+            {game.score && hideScores && (
+              <button
+                className="md-reveal"
+                onClick={() => setRevealed((v) => !v)}
+                aria-pressed={revealed}
+              >
+                {revealed ? 'Hide score' : 'Reveal score'}
+              </button>
             )}
           </div>
           <div className="md-side">
@@ -252,7 +270,7 @@ export default function GameDetail({ game, games, tz, hideScores, onClose, onPic
           )}
         </dl>
 
-        <LineScore game={game} hideScores={hideScores} />
+        <LineScore game={game} hideScores={hide} />
         <GameLeaders game={game} />
 
         <h4 className="md-sub">Tale of the tape</h4>
@@ -298,7 +316,7 @@ export default function GameDetail({ game, games, tz, hideScores, onClose, onPic
                     {g.away} {LEAGUE.homeAwaySep} {g.home}
                   </span>
                   <span className="drill-score">
-                    {hideScores ? '—' : `${g.score[1]} – ${g.score[0]}`}
+                    {hide ? '—' : `${g.score[1]} – ${g.score[0]}`}
                   </span>
                 </li>
               ))}

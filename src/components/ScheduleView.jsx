@@ -1,10 +1,54 @@
-import { useMemo, useRef, useEffect } from 'react'
+import { useMemo, useRef, useEffect, useState } from 'react'
 import { dayKey, dayLabel, todayKey } from '../utils/time.js'
+import { PLAYOFF } from '../config/league.js'
 import GameCard from './GameCard.jsx'
 
+// A game's collapse bucket. Regular-season games group by week (1..18); postseason
+// games group by round (Wild Card → Super Bowl), ordered right after week 18. The
+// fetch script tags each postseason game with a round key (WC/DIV/CONF/SB); a round
+// we don't recognise falls into a trailing generic "Postseason" group.
+const ROUND_INDEX = Object.fromEntries(PLAYOFF.rounds.map((r, i) => [r.key, i]))
+function bucketOf(g) {
+  if (g.seasonType === 'regular') {
+    return { order: g.week, key: `W${g.week}`, chip: `${g.week}`, label: `Week ${g.week}` }
+  }
+  const round = PLAYOFF.rounds[ROUND_INDEX[g.round]]
+  return round
+    ? { order: 100 + ROUND_INDEX[g.round], key: g.round, chip: round.short, label: round.name }
+    : { order: 200, key: 'POST', chip: 'Postseason', label: 'Postseason' }
+}
+
+// Collapse the day list into ordered week/round sections, each keeping its own day
+// sub-buckets so a section renders exactly like the flat list once open. (The
+// `.month-*` class names and --month-jump-h are the family's shared collapse
+// styling — months in the sibling viewers, weeks and rounds here.)
+function bucketsOf(days) {
+  const map = new Map() // key -> { order, key, chip, label, days: Map(dayKey -> games) }
+  for (const [dk, games] of days) {
+    for (const g of games) {
+      const b = bucketOf(g)
+      if (!map.has(b.key)) map.set(b.key, { ...b, days: new Map() })
+      const byDay = map.get(b.key).days
+      if (!byDay.has(dk)) byDay.set(dk, [])
+      byDay.get(dk).push(g)
+    }
+  }
+  return [...map.values()]
+    .sort((a, b) => a.order - b.order)
+    .map((b) => ({
+      key: b.key,
+      chip: b.chip,
+      label: b.label,
+      days: [...b.days.entries()].sort(([a], [c]) => a.localeCompare(c)),
+      count: [...b.days.values()].reduce((n, gs) => n + gs.length, 0),
+    }))
+}
+
 export default function ScheduleView({ games, tz, hideScores, showPast = false, onOpen }) {
-  const todayRef = useRef(null)
   const today = todayKey(tz)
+  const monthJumpRef = useRef(null)
+  const weekRefs = useRef({})
+  const dayRefs = useRef({})
 
   // Bucket by the calendar day the viewer sees, not by UTC date.
   const allDays = useMemo(() => {
@@ -18,18 +62,77 @@ export default function ScheduleView({ games, tz, hideScores, showPast = false, 
   }, [games, tz])
 
   // Days are dropped whole rather than filtering individual games, so a game earlier
-  // today still shows — "past" means a previous calendar day in the viewer's zone,
-  // not simply a kickoff already in the past.
+  // today still shows — "past" means a previous calendar day in the viewer's zone.
   const days = useMemo(
     () => (showPast ? allDays : allDays.filter(([key]) => key >= today)),
     [allDays, showPast, today]
   )
 
-  // Land the viewer on today rather than at the season opener in September. Only needed
-  // when past days are showing; otherwise today is already the first thing rendered.
+  // Full-season week/round grouping — what the collapsed "show past" view renders.
+  const weeks = useMemo(() => bucketsOf(allDays), [allDays])
+
+  // Where the landing (and a "Today" jump) goes: today if it has games, else the
+  // next game-day, else (the whole season already past) the last one.
+  const nowKey = useMemo(() => {
+    const upcoming = allDays.find(([key]) => key >= today)
+    return (upcoming || allDays[allDays.length - 1])?.[0] ?? null
+  }, [allDays, today])
+
+  // The week/round holding the landing day (opens on load) and the one holding
+  // today (flagged in the jump-bar — null when today itself has no game).
+  const nowWeek = weeks.find((w) => w.days.some(([k]) => k === nowKey))?.key ?? null
+  const currentWeek = weeks.find((w) => w.days.some(([k]) => k === today))?.key ?? null
+
+  const [expanded, setExpanded] = useState(() => new Set([nowWeek]))
+  const [pendingScroll, setPendingScroll] = useState(null)
+
+  const toggleWeek = (key) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  const jumpToWeek = (key) => {
+    setExpanded((prev) => new Set(prev).add(key))
+    setPendingScroll(key)
+  }
+  // "Today" jump: open the week holding the landing day and scroll to that day
+  // itself (today, or the next game-day when today is idle) — not the week header.
+  const jumpToToday = () => {
+    setExpanded((prev) => new Set(prev).add(nowWeek))
+    setPendingScroll(nowKey)
+  }
+  const jumpToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' })
+
+  // Landing scroll (full season only): the "now" day, which its open week renders.
   useEffect(() => {
-    if (showPast) todayRef.current?.scrollIntoView({ block: 'start' })
-  }, [showPast])
+    if (!showPast) return
+    dayRefs.current[nowKey]?.scrollIntoView({ block: 'start' })
+  }, [showPast, nowKey])
+
+  // Jump scroll: a day key resolves via dayRefs, a week key via weekRefs. Clearing
+  // pendingScroll re-runs this, but the guard makes the second pass a no-op.
+  useEffect(() => {
+    if (pendingScroll == null) return
+    const el = dayRefs.current[pendingScroll] || weekRefs.current[pendingScroll]
+    el?.scrollIntoView({ block: 'start' })
+    setPendingScroll(null)
+  }, [pendingScroll])
+
+  // Publish the sticky jump-bar's height as --month-jump-h so a day/week scrolled to
+  // `block: 'start'` clears it instead of landing behind it. 0 in the default view,
+  // where the bar isn't rendered.
+  useEffect(() => {
+    const publish = () =>
+      document.documentElement.style.setProperty(
+        '--month-jump-h',
+        `${monthJumpRef.current?.offsetHeight ?? 0}px`
+      )
+    publish()
+    window.addEventListener('resize', publish)
+    return () => window.removeEventListener('resize', publish)
+  }, [showPast, weeks.length])
 
   if (!days.length) {
     return (
@@ -39,21 +142,72 @@ export default function ScheduleView({ games, tz, hideScores, showPast = false, 
     )
   }
 
+  const renderDay = ([key, dayGames]) => (
+    <div
+      className={`day ${key === today ? 'is-today' : ''}`}
+      key={key}
+      ref={(el) => (dayRefs.current[key] = el)}
+    >
+      <h3 className="day-head">
+        <span>{dayLabel(key, tz)}</span>
+        <span className="day-count">
+          {dayGames.length} game{dayGames.length === 1 ? '' : 's'}
+        </span>
+      </h3>
+      <div className="day-games">
+        {dayGames.map((g) => (
+          <GameCard key={g.id} game={g} tz={tz} hideScores={hideScores} onOpen={onOpen} />
+        ))}
+      </div>
+    </div>
+  )
+
+  // Default view: today onward as a plain flat list — short by design.
+  if (!showPast) {
+    return <section className="view schedule">{days.map(renderDay)}</section>
+  }
+
+  // Full season: a sticky week/round jump-bar over collapsible sections, only the
+  // one holding "now" open to start.
   return (
     <section className="view schedule">
-      {days.map(([key, dayGames]) => (
-        <div className={`day ${key === today ? 'is-today' : ''}`} key={key} ref={key === today ? todayRef : null}>
-          <h3 className="day-head">
-            <span>{dayLabel(key, tz)}</span>
-            <span className="day-count">{dayGames.length} game{dayGames.length === 1 ? '' : 's'}</span>
-          </h3>
-          <div className="day-games">
-            {dayGames.map((g) => (
-              <GameCard key={g.id} game={g} tz={tz} hideScores={hideScores} onOpen={onOpen} />
-            ))}
+      <nav className="month-jump" aria-label="Jump to week" ref={monthJumpRef}>
+        {weeks.map((w) => (
+          <button
+            key={w.key}
+            type="button"
+            className={`chip month-chip ${w.key === currentWeek ? 'is-current' : ''}`}
+            onClick={() => jumpToWeek(w.key)}
+          >
+            {w.chip}
+          </button>
+        ))}
+        <button type="button" className="chip month-chip month-top" onClick={jumpToTop}>
+          ↑ Top
+        </button>
+        <button type="button" className="chip month-chip month-today" onClick={jumpToToday}>
+          Today
+        </button>
+      </nav>
+      {weeks.map((w) => {
+        const open = expanded.has(w.key)
+        return (
+          <div className="month" key={w.key} ref={(el) => (weekRefs.current[w.key] = el)}>
+            <button
+              type="button"
+              className={`month-head ${open ? 'open' : ''}`}
+              onClick={() => toggleWeek(w.key)}
+              aria-expanded={open}
+            >
+              <span aria-hidden="true">{open ? '▾' : '▸'}</span> <span>{w.label}</span>
+              <span className="month-count">
+                {w.count} game{w.count === 1 ? '' : 's'}
+              </span>
+            </button>
+            {open && <div className="month-days">{w.days.map(renderDay)}</div>}
           </div>
-        </div>
-      ))}
+        )
+      })}
     </section>
   )
 }

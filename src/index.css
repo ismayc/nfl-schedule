@@ -504,7 +504,9 @@ select:hover,
 /* ── Schedule ───────────────────────────────────────────────────────── */
 .day {
   margin-bottom: 22px;
-  scroll-margin-top: 12px;
+  /* Clear the sticky week jump-bar so a "Today"/day jump doesn't land behind it.
+     --month-jump-h is 0 in the default view, where the bar isn't rendered. */
+  scroll-margin-top: calc(var(--month-jump-h, 0px) + 12px);
 }
 
 .day-head {
@@ -532,6 +534,83 @@ select:hover,
 .day-games {
   display: grid;
   gap: 10px;
+}
+
+/* Full-season navigation: a sticky week/round jump-bar over collapsible sections,
+   shown only when "Show past" opens the whole season. The `.month-*` names are the
+   family's shared collapse styling — weeks and playoff rounds here. */
+.month-jump {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0;
+  margin-bottom: 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.month-chip.is-current {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* "Top" + "Today" jumps sit as a pair at the far right of the bar. */
+.month-top,
+.month-today {
+  font-weight: 600;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.month-top {
+  margin-left: auto;
+}
+
+.month {
+  margin-bottom: 14px;
+  scroll-margin-top: calc(var(--month-jump-h, 0px) + 12px);
+}
+
+.month-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.month-head:hover {
+  border-color: var(--accent);
+}
+
+.month-head.open {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.month-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.month-days {
+  padding: 16px 2px 4px;
 }
 
 .game {

@@ -41,6 +41,8 @@ describe('App renders every view on the empty 2026 snapshot', () => {
   it('offers all 32 teams in the filter (plus "All teams")', () => {
     renderApp()
     expect(screen.getByRole('main')).toBeInTheDocument()
+    // The team select lives in the collapsed filter panel; open it first.
+    fireEvent.click(screen.getByRole('button', { name: /⚙ Filters/ }))
     // The team <select> is the combobox carrying 33 options (32 teams + "All teams").
     const combos = screen.getAllByRole('combobox')
     const teamSelect = combos.find((c) => c.querySelectorAll('option').length === 33)

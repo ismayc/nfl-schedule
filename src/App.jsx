@@ -4,6 +4,7 @@ import { SEASON, TEAMS } from './data/teams.js'
 import { LEAGUE } from './config/league.js'
 import { detectTimezone, timezoneOptions, dayKey, todayKey } from './utils/time.js'
 import { readState, writeState, VIEWS } from './utils/urlState.js'
+import { parseQuery, matchesSearch } from './utils/search.js'
 import { applyLive, fetchLive, liveCount } from './services/espn.js'
 import { useFollow } from './context/follow.jsx'
 import ScheduleView from './components/ScheduleView.jsx'
@@ -24,6 +25,10 @@ const IDLE_REFRESH_MS = 120_000
 const THEME_KEY = `${LEAGUE.storageKey}:theme`
 const ALERTS_KEY = `${LEAGUE.storageKey}:alerts`
 
+// One-click examples that demonstrate the scoped-search syntax, each matched to
+// something that really appears in the committed schedule.
+const SEARCH_EXAMPLES = ['team: Chiefs', 'city: Kansas City', 'venue: Arrowhead', 'tv: NBC']
+
 export default function App() {
   // Read the shared link once, on mount.
   const detectedTz = useMemo(detectTimezone, [])
@@ -37,6 +42,13 @@ export default function App() {
   const [week, setWeek] = useState(initial.week)
   const [onlyFollowed, setOnlyFollowed] = useState(initial.mine)
   const [showPast, setShowPast] = useState(initial.past)
+  // Free-text / scoped search over the schedule. Deliberately component-local — it
+  // is never written to the URL or localStorage, so it can't add a persisted key or
+  // change any shared link (which would break the deep-link tests).
+  const [search, setSearch] = useState('')
+  // The filter panel starts open when a shared link already applies a team/followed
+  // filter, so an active filter is never hidden behind a closed panel.
+  const [filtersOpen, setFiltersOpen] = useState(() => Boolean(initial.team) || Boolean(initial.mine))
   const [live, setLive] = useState(null)
   const [updatedAt, setUpdatedAt] = useState(null)
   // A ?game= deep link opens straight onto that game's detail (see urlState.js).
@@ -55,8 +67,12 @@ export default function App() {
   const [playerModal, setPlayerModal] = useState(null)
   const [showCalendar, setShowCalendar] = useState(false)
   const prevGames = useRef(null)
+  const filterBarRef = useRef(null)
 
   const { count: followedCount, followed } = useFollow()
+
+  // Parse the search box once per keystroke, not once per game.
+  const parsedSearch = useMemo(() => parseQuery(search), [search])
 
   // Committed schedule + live overlay. Everything downstream is derived from this.
   const games = useMemo(() => applyLive(GAMES, live), [live])
@@ -143,9 +159,28 @@ export default function App() {
     return games.filter((g) => {
       if (team && g.home !== team && g.away !== team) return false
       if (onlyFollowed && followedCount && !followed.has(g.home) && !followed.has(g.away)) return false
+      // An empty query matches everything, so this is a no-op until something is typed.
+      if (!matchesSearch(g, parsedSearch)) return false
       return true
     })
-  }, [games, team, onlyFollowed, followed, followedCount])
+  }, [games, team, onlyFollowed, followed, followedCount, parsedSearch])
+
+  // How many filters are actively narrowing the schedule — drives the toggle badge
+  // and the auto-open. A followed toggle only counts once there are teams for it to
+  // act on, mirroring what scheduleGames applies.
+  const activeFilterCount = useMemo(() => {
+    let n = 0
+    if (search.trim()) n++
+    if (team) n++
+    if (onlyFollowed && followedCount) n++
+    return n
+  }, [search, team, onlyFollowed, followedCount])
+
+  const clearAllFilters = () => {
+    setSearch('')
+    setTeam('')
+    setOnlyFollowed(false)
+  }
 
   const pastDayCount = useMemo(() => {
     const today = todayKey(tz)
@@ -156,6 +191,20 @@ export default function App() {
     }
     return keys.size
   }, [scheduleGames, tz])
+
+  // Publish the sticky filter bar's height as --filter-bar-h so ScheduleView's own
+  // sticky .month-jump can pin directly beneath it instead of behind it. Re-measured
+  // whenever the bar's height can change (panel open/close, view switch, the earlier-
+  // games chip appearing) and on window resize (the bar wraps on narrow screens).
+  useEffect(() => {
+    const el = filterBarRef.current
+    if (!el) return
+    const publish = () =>
+      document.documentElement.style.setProperty('--filter-bar-h', `${el.offsetHeight}px`)
+    publish()
+    window.addEventListener('resize', publish)
+    return () => window.removeEventListener('resize', publish)
+  }, [filtersOpen, activeFilterCount, view, pastDayCount, showPast, followedCount])
 
   return (
     <div className="app">
@@ -230,51 +279,95 @@ export default function App() {
       </nav>
 
       {(view === 'schedule' || view === 'week') && (
-        <div className="filters">
-          <label className="field">
-            <span className="sr-only">Team</span>
-            <select value={team} onChange={(e) => setTeam(e.target.value)}>
-              <option value="">All teams</option>
-              {TEAMS.map((t) => (
-                <option key={t.abbr} value={t.abbr}>
-                  {t.displayName}
-                </option>
-              ))}
-            </select>
-          </label>
-          {followedCount > 0 && (
+        <div className="filter-bar" ref={filterBarRef}>
+          <div className="filter-controls">
             <button
-              className={`chip ${onlyFollowed ? 'on' : ''}`}
-              onClick={() => setOnlyFollowed((v) => !v)}
-              aria-pressed={onlyFollowed}
+              className={`chip filter-toggle ${filtersOpen ? 'on' : ''}`}
+              onClick={() => setFiltersOpen((o) => !o)}
+              aria-expanded={filtersOpen}
+              aria-controls="filters-panel"
             >
-              ★ My teams ({followedCount})
+              ⚙ Filters
+              {activeFilterCount > 0 && <span className="filter-badge">{activeFilterCount}</span>}
+              <span className="chev" aria-hidden="true">
+                {filtersOpen ? '▲' : '▼'}
+              </span>
             </button>
-          )}
-          {team && (
-            <button className="chip" onClick={() => setTeam('')}>
-              <TeamLogo abbr={team} size={18} /> Clear
-            </button>
-          )}
-          {view === 'schedule' && pastDayCount > 0 && (
+            {activeFilterCount > 0 && (
+              <button className="chip filter-clear" onClick={clearAllFilters}>
+                Clear all
+              </button>
+            )}
+            {view === 'schedule' && pastDayCount > 0 && (
+              <button
+                className={`chip ${showPast ? 'on' : ''}`}
+                onClick={() => setShowPast((v) => !v)}
+                aria-pressed={showPast}
+                title={showPast ? 'Hide previous days' : 'Also show earlier games, back to the opener'}
+              >
+                <span aria-hidden="true">{showPast ? '▾' : '▸'}</span> Earlier games
+                <span className="chip-count">{pastDayCount}</span>
+              </button>
+            )}
             <button
-              className={`chip ${showPast ? 'on' : ''}`}
-              onClick={() => setShowPast((v) => !v)}
-              aria-pressed={showPast}
-              title={showPast ? 'Hide previous days' : 'Show previous days'}
+              className="chip"
+              onClick={() => setShowCalendar(true)}
+              title="Subscribe to or download a calendar of these games"
             >
-              <span aria-hidden="true">{showPast ? '▾' : '▸'}</span> {showPast ? 'Hide' : 'Show'} past
-              days
-              <span className="chip-count">{pastDayCount}</span>
+              📅 Calendar
             </button>
+          </div>
+
+          {filtersOpen && (
+            <div className="filters-panel" id="filters-panel">
+              <div className="filters">
+                <label className="field search-field">
+                  <span className="sr-only">Search games</span>
+                  <input
+                    className="search"
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder='Search — try "team: Chiefs" or "city: Kansas City"'
+                  />
+                </label>
+                <label className="field">
+                  <span className="sr-only">Team</span>
+                  <select value={team} onChange={(e) => setTeam(e.target.value)}>
+                    <option value="">All teams</option>
+                    {TEAMS.map((t) => (
+                      <option key={t.abbr} value={t.abbr}>
+                        {t.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {followedCount > 0 && (
+                  <button
+                    className={`chip ${onlyFollowed ? 'on' : ''}`}
+                    onClick={() => setOnlyFollowed((v) => !v)}
+                    aria-pressed={onlyFollowed}
+                  >
+                    ★ My teams ({followedCount})
+                  </button>
+                )}
+                {team && (
+                  <button className="chip" onClick={() => setTeam('')}>
+                    <TeamLogo abbr={team} size={18} /> Clear
+                  </button>
+                )}
+              </div>
+              <div className="search-hints">
+                <span className="hint-label">Try:</span>
+                {SEARCH_EXAMPLES.map((ex) => (
+                  <button key={ex} className="hint-chip" onClick={() => setSearch(ex)}>
+                    {ex}
+                  </button>
+                ))}
+                <span className="hint-note">fields: team · city · venue · broadcast</span>
+              </div>
+            </div>
           )}
-          <button
-            className="chip"
-            onClick={() => setShowCalendar(true)}
-            title="Subscribe to or download a calendar of these games"
-          >
-            📅 Calendar
-          </button>
         </div>
       )}
 

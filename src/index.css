@@ -224,6 +224,128 @@ select:hover,
   margin-bottom: 16px;
 }
 
+/* ── Collapsible + sticky filter bar ────────────────────────────────────
+   The outer bar pins to the top of the viewport (z-index above the schedule's
+   own sticky .month-jump) with a solid background so the controls stay reachable
+   as the schedule scrolls. Its measured height is published as --filter-bar-h
+   (see App.jsx) so .month-jump can stick directly beneath it, not behind it. */
+.filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--bg);
+  padding: 8px 0;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.filter-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-toggle {
+  gap: 8px;
+}
+
+/* Count of filters currently narrowing the schedule. */
+.filter-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.filter-toggle.on .filter-badge {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.chev {
+  color: var(--text-faint);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.filter-clear {
+  color: var(--text-dim);
+}
+.filter-clear:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.filters-panel {
+  margin-top: 10px;
+}
+
+.filters-panel .filters {
+  margin-bottom: 0;
+}
+
+.search-field {
+  flex: 1 1 260px;
+}
+
+.search {
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 7px 12px;
+}
+
+.search::placeholder {
+  color: var(--text-faint);
+}
+
+.search-hints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.hint-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+}
+
+.hint-chip {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px dashed var(--border);
+  background: var(--card);
+  color: var(--accent);
+  cursor: pointer;
+}
+.hint-chip:hover {
+  border-style: solid;
+  border-color: var(--accent);
+}
+
+.hint-note {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-left: 4px;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -506,7 +628,7 @@ select:hover,
   margin-bottom: 22px;
   /* Clear the sticky week jump-bar so a "Today"/day jump doesn't land behind it.
      --month-jump-h is 0 in the default view, where the bar isn't rendered. */
-  scroll-margin-top: calc(var(--month-jump-h, 0px) + 12px);
+  scroll-margin-top: calc(var(--filter-bar-h, 0px) + var(--month-jump-h, 0px) + 12px);
 }
 
 .day-head {
@@ -541,7 +663,9 @@ select:hover,
    family's shared collapse styling — weeks and playoff rounds here. */
 .month-jump {
   position: sticky;
-  top: 0;
+  /* Pin directly beneath the sticky .filter-bar (its live height, published by
+     App.jsx) rather than colliding with it at the very top. */
+  top: var(--filter-bar-h, 0px);
   z-index: 5;
   display: flex;
   flex-wrap: wrap;
@@ -572,7 +696,7 @@ select:hover,
 
 .month {
   margin-bottom: 14px;
-  scroll-margin-top: calc(var(--month-jump-h, 0px) + 12px);
+  scroll-margin-top: calc(var(--filter-bar-h, 0px) + var(--month-jump-h, 0px) + 12px);
 }
 
 .month-head {

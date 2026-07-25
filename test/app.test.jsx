@@ -25,6 +25,10 @@ const mount = async () => {
 
 const search = () => new URLSearchParams(window.location.search)
 
+// The team select / My teams controls live in the filter panel, collapsed unless a
+// team/followed filter is already active on load; open it before reaching inside.
+const openFilters = () => userEvent.click(screen.getByRole('button', { name: /⚙ Filters/ }))
+
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn()
   localStorage.clear()
@@ -63,13 +67,13 @@ describe('App — shell and navigation', () => {
     await waitFor(() => expect(search().get('view')).toBeNull())
   })
 
-  it('shows the filter row only on schedule/week views', async () => {
+  it('shows the filter bar only on schedule/week views', async () => {
     await mount()
-    expect(screen.getByLabelText('Team')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /⚙ Filters/ })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /Standings/ }))
-    expect(screen.queryByLabelText('Team')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /⚙ Filters/ })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: /📆 Week/ }))
-    expect(screen.getByLabelText('Team')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /⚙ Filters/ })).toBeInTheDocument()
   })
 
   it('restores view, spoiler mode, and timezone from a shared link', async () => {
@@ -91,12 +95,14 @@ describe('App — filters', () => {
   it('filters the schedule by team and clears it', async () => {
     await mount()
     const before = document.querySelectorAll('.game').length
+    await openFilters()
     await userEvent.selectOptions(screen.getByLabelText('Team'), 'KC')
     await waitFor(() => expect(search().get('team')).toBe('KC'))
     const after = document.querySelectorAll('.game').length
     expect(after).toBeGreaterThan(0)
     expect(after).toBeLessThan(before)
-    await userEvent.click(screen.getByRole('button', { name: /Clear/ }))
+    // The team-specific Clear chip drops just the team filter.
+    await userEvent.click(screen.getByRole('button', { name: 'Clear' }))
     await waitFor(() => expect(search().get('team')).toBeNull())
   })
 
@@ -110,12 +116,67 @@ describe('App — filters', () => {
     localStorage.setItem('nfl:followed', JSON.stringify(['KC']))
     await mount()
     const all = document.querySelectorAll('.game').length
+    await openFilters()
     const chip = screen.getByRole('button', { name: /My teams/ })
     await userEvent.click(chip)
     await waitFor(() => expect(search().get('mine')).toBe('1'))
     const mine = document.querySelectorAll('.game').length
     expect(mine).toBeGreaterThan(0)
     expect(mine).toBeLessThan(all)
+  })
+})
+
+describe('App — the collapsible filter bar', () => {
+  it('is collapsed by default and toggles open/closed with aria-expanded', async () => {
+    await mount()
+    const toggle = screen.getByRole('button', { name: /⚙ Filters/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByLabelText('Search games')).not.toBeInTheDocument()
+
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByLabelText('Search games')).toBeInTheDocument()
+
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByLabelText('Search games')).not.toBeInTheDocument()
+  })
+
+  it('auto-opens the panel when a shared link already carries a team filter', async () => {
+    window.history.replaceState(null, '', '/?team=KC')
+    await mount()
+    // Open on load, with the active-filter badge reflecting the team filter.
+    expect(screen.getByLabelText('Search games')).toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: /⚙ Filters/ })).getByText('1')).toBeInTheDocument()
+  })
+
+  it('auto-opens the panel from a followed-only shared link', async () => {
+    window.history.replaceState(null, '', '/?mine=1')
+    await mount()
+    expect(screen.getByLabelText('Search games')).toBeInTheDocument()
+  })
+
+  it('narrows the schedule as you type a scoped query, then Clear all resets it', async () => {
+    await mount()
+    const before = document.querySelectorAll('.game').length
+    await openFilters()
+    await userEvent.type(screen.getByLabelText('Search games'), 'team: Chiefs')
+
+    const narrowed = document.querySelectorAll('.game').length
+    expect(narrowed).toBeGreaterThan(0)
+    expect(narrowed).toBeLessThan(before)
+    expect(within(screen.getByRole('button', { name: /⚙ Filters/ })).getByText('1')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Clear all' }))
+    expect(screen.getByLabelText('Search games')).toHaveValue('')
+    expect(document.querySelectorAll('.game').length).toBe(before)
+  })
+
+  it('fills the search box from an example hint chip', async () => {
+    await mount()
+    await openFilters()
+    await userEvent.click(screen.getByRole('button', { name: 'team: Chiefs' }))
+    expect(screen.getByLabelText('Search games')).toHaveValue('team: Chiefs')
   })
 })
 
@@ -191,6 +252,7 @@ describe('App — calendar', () => {
 
   it('offers a current-filter download once a team filter is set, then closes', async () => {
     await mount()
+    await openFilters()
     await userEvent.selectOptions(screen.getByLabelText('Team'), 'KC')
     await userEvent.click(screen.getByRole('button', { name: '📅 Calendar' }))
     const dialog = screen.getByRole('dialog', { name: 'Calendar' })

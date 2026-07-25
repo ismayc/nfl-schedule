@@ -53,7 +53,7 @@ describe('App — a completed season', () => {
     await mount()
     // Both games are in the past, so nothing shows until the chip is clicked.
     expect(document.querySelectorAll('.day').length).toBe(0)
-    const chip = screen.getByRole('button', { name: /past days/ })
+    const chip = screen.getByRole('button', { name: /Earlier games/ })
     expect(within(chip).getByText(/^\d+$/).textContent).not.toBe('0')
     await userEvent.click(chip)
     await waitFor(() => expect(search().get('past')).toBe('1'))

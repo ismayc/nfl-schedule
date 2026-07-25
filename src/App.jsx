@@ -5,8 +5,11 @@ import { LEAGUE } from './config/league.js'
 import { detectTimezone, timezoneOptions, dayKey, todayKey } from './utils/time.js'
 import { readState, writeState, VIEWS } from './utils/urlState.js'
 import { parseQuery, matchesSearch } from './utils/search.js'
+import { watchableServices } from './utils/watch.js'
 import { applyLive, fetchLive, liveCount } from './services/espn.js'
 import { useFollow } from './context/follow.jsx'
+import { useServices } from './context/services.jsx'
+import ServicesModal from './components/ServicesModal.jsx'
 import ScheduleView from './components/ScheduleView.jsx'
 import StandingsView from './components/StandingsView.jsx'
 import StatsView from './components/StatsView.jsx'
@@ -24,6 +27,7 @@ const LIVE_REFRESH_MS = 30_000
 const IDLE_REFRESH_MS = 120_000
 const THEME_KEY = `${LEAGUE.storageKey}:theme`
 const ALERTS_KEY = `${LEAGUE.storageKey}:alerts`
+const WATCH_KEY = `${LEAGUE.storageKey}:watchOnly`
 
 // One-click examples that demonstrate the scoped-search syntax, each matched to
 // something that really appears in the committed schedule.
@@ -46,9 +50,21 @@ export default function App() {
   // is never written to the URL or localStorage, so it can't add a persisted key or
   // change any shared link (which would break the deep-link tests).
   const [search, setSearch] = useState('')
+  // "On my services": show only games carried by a service the viewer has. Remembered
+  // per-device (like the followed set), not in the shared URL.
+  const [watchOnly, setWatchOnly] = useState(() => {
+    try {
+      return localStorage.getItem(WATCH_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
   // The filter panel starts open when a shared link already applies a team/followed
-  // filter, so an active filter is never hidden behind a closed panel.
-  const [filtersOpen, setFiltersOpen] = useState(() => Boolean(initial.team) || Boolean(initial.mine))
+  // filter (or a device-remembered watch filter), so an active filter is never hidden
+  // behind a closed panel.
+  const [filtersOpen, setFiltersOpen] = useState(
+    () => Boolean(initial.team) || Boolean(initial.mine) || watchOnly
+  )
   const [live, setLive] = useState(null)
   const [updatedAt, setUpdatedAt] = useState(null)
   // A ?game= deep link opens straight onto that game's detail (see urlState.js).
@@ -66,10 +82,12 @@ export default function App() {
   const [teamPanel, setTeamPanel] = useState(null)
   const [playerModal, setPlayerModal] = useState(null)
   const [showCalendar, setShowCalendar] = useState(false)
+  const [showServices, setShowServices] = useState(false)
   const prevGames = useRef(null)
   const filterBarRef = useRef(null)
 
   const { count: followedCount, followed } = useFollow()
+  const { services, count: serviceCount } = useServices()
 
   // Parse the search box once per keystroke, not once per game.
   const parsedSearch = useMemo(() => parseQuery(search), [search])
@@ -159,27 +177,38 @@ export default function App() {
     return games.filter((g) => {
       if (team && g.home !== team && g.away !== team) return false
       if (onlyFollowed && followedCount && !followed.has(g.home) && !followed.has(g.away)) return false
+      // A no-op until services are chosen, so clearing them all can't empty the list.
+      // A game whose broadcast is unknown is kept — "not announced" isn't "can't watch".
+      if (watchOnly && serviceCount && g.broadcast?.length && watchableServices(g.broadcast, services).length === 0)
+        return false
       // An empty query matches everything, so this is a no-op until something is typed.
       if (!matchesSearch(g, parsedSearch)) return false
       return true
     })
-  }, [games, team, onlyFollowed, followed, followedCount, parsedSearch])
+  }, [games, team, onlyFollowed, followed, followedCount, watchOnly, services, serviceCount, parsedSearch])
 
   // How many filters are actively narrowing the schedule — drives the toggle badge
-  // and the auto-open. A followed toggle only counts once there are teams for it to
-  // act on, mirroring what scheduleGames applies.
+  // and the auto-open. A followed/watch toggle only counts once there are teams/
+  // services for it to act on, mirroring what scheduleGames applies.
   const activeFilterCount = useMemo(() => {
     let n = 0
     if (search.trim()) n++
     if (team) n++
     if (onlyFollowed && followedCount) n++
+    if (watchOnly && serviceCount) n++
     return n
-  }, [search, team, onlyFollowed, followedCount])
+  }, [search, team, onlyFollowed, followedCount, watchOnly, serviceCount])
 
   const clearAllFilters = () => {
     setSearch('')
     setTeam('')
     setOnlyFollowed(false)
+    setWatchOnly(false)
+    try {
+      localStorage.setItem(WATCH_KEY, '0')
+    } catch {
+      /* private mode — the preference just won't persist */
+    }
   }
 
   const pastDayCount = useMemo(() => {
@@ -204,7 +233,7 @@ export default function App() {
     publish()
     window.addEventListener('resize', publish)
     return () => window.removeEventListener('resize', publish)
-  }, [filtersOpen, activeFilterCount, view, pastDayCount, showPast, followedCount])
+  }, [filtersOpen, activeFilterCount, view, pastDayCount, showPast, followedCount, serviceCount])
 
   return (
     <div className="app">
@@ -351,6 +380,42 @@ export default function App() {
                     ★ My teams ({followedCount})
                   </button>
                 )}
+                {serviceCount === 0 ? (
+                  <button
+                    className="chip"
+                    onClick={() => setShowServices(true)}
+                    title="Pick the streaming services and TV packages you have"
+                  >
+                    📺 Choose my services
+                  </button>
+                ) : (
+                  <span className="chip-group">
+                    <button
+                      className={`chip ${watchOnly ? 'on' : ''}`}
+                      onClick={() => {
+                        const next = !watchOnly
+                        setWatchOnly(next)
+                        try {
+                          localStorage.setItem(WATCH_KEY, next ? '1' : '0')
+                        } catch {
+                          /* private mode — the filter just won't be remembered */
+                        }
+                      }}
+                      aria-pressed={watchOnly}
+                      title="Only show games on my services"
+                    >
+                      📺 On my services ({serviceCount})
+                    </button>
+                    <button
+                      className="chip chip-icon"
+                      onClick={() => setShowServices(true)}
+                      aria-label="Edit my services"
+                      title="Edit my services"
+                    >
+                      ⚙
+                    </button>
+                  </span>
+                )}
                 {team && (
                   <button className="chip" onClick={() => setTeam('')}>
                     <TeamLogo abbr={team} size={18} /> Clear
@@ -438,6 +503,7 @@ export default function App() {
           onClose={() => setShowCalendar(false)}
         />
       )}
+      {showServices && <ServicesModal onClose={() => setShowServices(false)} />}
 
       <footer className="foot">
         <p className="disclaimer">

@@ -346,6 +346,120 @@ select:hover,
   margin-left: 4px;
 }
 
+/* The "On my services" chip paired with a small ⚙ edit button. */
+.chip-group {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.chip-icon {
+  padding: 7px 10px;
+}
+
+/* ── My-services picker (modal) ─────────────────────────────────────────── */
+.svc-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+@media (max-width: 460px) {
+  .svc-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+.svc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--card);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.svc-item:hover {
+  border-color: var(--accent);
+}
+
+.svc-item.on {
+  border-color: var(--win);
+  background: color-mix(in srgb, var(--win) 12%, transparent);
+}
+
+.svc-item input {
+  accent-color: var(--win);
+  cursor: pointer;
+}
+
+.svc-name {
+  flex: 1;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.svc-kind {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-faint);
+}
+
+.svc-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.svc-foot-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Per-card badges: personalized 📺 services + the regional flag ───────── */
+.watch {
+  display: inline-flex;
+  align-items: center;
+  /* Wrap so every selected service that carries the game stays visible. */
+  flex-wrap: wrap;
+  gap: 5px;
+  color: var(--win);
+}
+
+.watch-tv {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.watch-chip {
+  border: 1px solid color-mix(in srgb, var(--win) 45%, transparent);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* A regionally-distributed Sunday CBS/FOX game — flagged, not colour-only, with a
+   help cursor since the detail is in the tooltip. */
+.regional {
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  padding: 1px 7px;
+  color: var(--text-faint);
+  font-weight: 600;
+  cursor: help;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;

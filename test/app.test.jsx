@@ -3,6 +3,7 @@ import { act, render, screen, within, waitFor, cleanup, fireEvent } from '@testi
 import userEvent from '@testing-library/user-event'
 import App from '../src/App.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
+import { ServicesProvider } from '../src/context/services.jsx'
 import { VIEWS } from '../src/utils/urlState.js'
 import { GAMES } from '../src/data/schedule.js'
 
@@ -12,7 +13,9 @@ import { GAMES } from '../src/data/schedule.js'
 
 const renderApp = () => render(
   <FollowProvider>
-    <App />
+    <ServicesProvider>
+      <App />
+    </ServicesProvider>
   </FollowProvider>
 )
 
@@ -177,6 +180,89 @@ describe('App — the collapsible filter bar', () => {
     await openFilters()
     await userEvent.click(screen.getByRole('button', { name: 'team: Chiefs' }))
     expect(screen.getByLabelText('Search games')).toHaveValue('team: Chiefs')
+  })
+})
+
+describe('App — the "On my services" filter', () => {
+  it('offers "Choose my services" until services are picked, then filters', async () => {
+    await mount()
+    await openFilters()
+    // Nothing chosen yet → the picker prompt, no On-my-services toggle.
+    expect(screen.getByRole('button', { name: /Choose my services/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /On my services/ })).not.toBeInTheDocument()
+
+    // Open the picker and select a single streaming service (Prime = Thursday games).
+    await userEvent.click(screen.getByRole('button', { name: /Choose my services/ }))
+    const dialog = screen.getByRole('dialog', { name: 'My services' })
+    await userEvent.click(within(dialog).getByText('Prime Video'))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Done' }))
+
+    const before = document.querySelectorAll('.game').length
+    const chip = screen.getByRole('button', { name: /On my services \(1\)/ })
+    await userEvent.click(chip)
+    await waitFor(() => expect(chip).toHaveAttribute('aria-pressed', 'true'))
+    expect(localStorage.getItem('nfl:watchOnly')).toBe('1')
+
+    const after = document.querySelectorAll('.game').length
+    expect(after).toBeGreaterThan(0)
+    expect(after).toBeLessThan(before) // Prime carries only a slice of the season
+    // The Prime games that survived show the personalized 📺 badge.
+    expect(document.querySelectorAll('.watch').length).toBeGreaterThan(0)
+  })
+
+  it('remembers the watch filter across a reload and auto-opens the panel', async () => {
+    localStorage.setItem('nfl:services', JSON.stringify(['prime']))
+    localStorage.setItem('nfl:watchOnly', '1')
+    await mount()
+    // Auto-opened because a device-remembered watch filter is active.
+    expect(screen.getByRole('button', { name: /On my services/ })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    )
+    // Clear all switches it off and writes the preference back.
+    await userEvent.click(screen.getByRole('button', { name: 'Clear all' }))
+    expect(screen.getByRole('button', { name: /On my services/ })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
+    expect(localStorage.getItem('nfl:watchOnly')).toBe('0')
+  })
+
+  it('edits services from the ⚙ button next to the toggle', async () => {
+    localStorage.setItem('nfl:services', JSON.stringify(['prime']))
+    await mount()
+    await openFilters()
+    await userEvent.click(screen.getByRole('button', { name: 'Edit my services' }))
+    expect(screen.getByRole('dialog', { name: 'My services' })).toBeInTheDocument()
+  })
+
+  it('still toggles the watch filter when storage refuses the write', async () => {
+    localStorage.setItem('nfl:services', JSON.stringify(['prime']))
+    await mount()
+    await openFilters()
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota')
+    })
+    const chip = screen.getByRole('button', { name: /On my services/ })
+    await userEvent.click(chip)
+    expect(chip).toHaveAttribute('aria-pressed', 'true')
+    // Toggling back off exercises the other arm of the persisted value.
+    await userEvent.click(chip)
+    expect(chip).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('still clears filters when storage refuses the write', async () => {
+    localStorage.setItem('nfl:services', JSON.stringify(['prime']))
+    localStorage.setItem('nfl:watchOnly', '1')
+    await mount()
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota')
+    })
+    await userEvent.click(screen.getByRole('button', { name: 'Clear all' }))
+    expect(screen.getByRole('button', { name: /On my services/ })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    )
   })
 })
 

@@ -1,7 +1,9 @@
 import { TEAM_BY_ABBR } from '../data/teams.js'
 import { LEAGUE } from '../config/league.js'
 import { formatTime, formatZoneAbbr, liveState, countdown } from '../utils/time.js'
+import { watchableServices, broadcastNotBadged, isRegional } from '../utils/watch.js'
 import { useFollow } from '../context/follow.jsx'
+import { useServices } from '../context/services.jsx'
 import TeamLogo from './TeamLogo.jsx'
 
 // Halftime and end-of-quarter are stable states; a running clock is not. Falls back
@@ -58,9 +60,21 @@ export default function GameCard({ game, tz, hideScores, onOpen }) {
   const homeWon = scored && hs > as
   const awayWon = scored && as > hs
 
+  const { services } = useServices()
+  // Which of the viewer's chosen services carry this game — a 📺 icon plus a label
+  // per service. Empty (no badge) until the viewer picks services.
+  const watch = watchableServices(game.broadcast, services)
+  // A regionally-distributed Sunday CBS/FOX game — which one your market gets depends
+  // on where you live (ESPN publishes no market data), so we flag it rather than imply
+  // this exact game airs in your area.
+  const regional = isRegional(game)
+
   const meta = []
   if (game.venue) meta.push(game.city ? `${game.venue}, ${game.city}` : game.venue)
-  if (game.broadcast?.length) meta.push(game.broadcast.slice(0, 3).join(' · '))
+  // Drop any network already shown as a 📺 badge (e.g. "Prime Video") so it isn't
+  // repeated; the underlying networks of a bundle badge (CBS for YouTube TV) still show.
+  const networks = broadcastNotBadged(game.broadcast, watch)
+  if (networks.length) meta.push(networks.slice(0, 3).join(' · '))
 
   return (
     <article
@@ -102,6 +116,26 @@ export default function GameCard({ game, tz, hideScores, onOpen }) {
         {meta.map((m) => (
           <span key={m}>{m}</span>
         ))}
+        {regional && (
+          <span
+            className="regional"
+            title="Regional Sunday game — shown on your local CBS/FOX affiliate if your market carries this matchup. Check local listings."
+          >
+            Regional
+          </span>
+        )}
+        {watch.length > 0 && (
+          <span className="watch" aria-label={`Watch on ${watch.map((s) => s.label).join(', ')}`}>
+            <span className="watch-tv" aria-hidden="true">
+              📺
+            </span>
+            {watch.map((s) => (
+              <span key={s.key} className="watch-chip">
+                {s.label}
+              </span>
+            ))}
+          </span>
+        )}
         {state === 'upcoming' && countdown(game.tip) && (
           <span className="countdown">in {countdown(game.tip)}</span>
         )}

@@ -1,9 +1,11 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import GameCard from '../src/components/GameCard.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
+import { ServicesProvider } from '../src/context/services.jsx'
 
+beforeEach(() => localStorage.clear())
 afterEach(cleanup)
 
 const TZ = 'America/New_York'
@@ -146,5 +148,58 @@ describe('GameCard', () => {
     render(<GameCard game={g({ home: 'ZZZ', away: 'YYY' })} tz={TZ} />)
     expect(screen.getByRole('button', { name: 'Follow ZZZ' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Follow YYY' })).toBeTruthy()
+  })
+
+  it('badges a streaming exclusive and drops that network from the plain meta', () => {
+    // Prime is selected; a Prime Video (Thursday) game is an exclusive, so the badge
+    // replaces the plain "Prime Video" network span rather than duplicating it.
+    localStorage.setItem('nfl:services', JSON.stringify(['prime']))
+    const { container } = render(
+      <ServicesProvider>
+        <GameCard game={g({ broadcast: ['Prime Video'] })} tz={TZ} />
+      </ServicesProvider>
+    )
+    const watch = container.querySelector('.watch')
+    expect(watch).toBeTruthy()
+    expect(within(watch).getByText('Prime Video')).toBeInTheDocument()
+    const plain = [...container.querySelectorAll('.game-meta > span')].map((s) => s.textContent)
+    expect(plain).not.toContain('Prime Video')
+  })
+
+  it('keeps a simulcast network in the meta alongside the badge (Peacock/NBC)', () => {
+    // Peacock streams NBC's game, but the linear "NBC" line still shows for antenna
+    // viewers — only the badge is added.
+    localStorage.setItem('nfl:services', JSON.stringify(['peacock']))
+    const { container } = render(
+      <ServicesProvider>
+        <GameCard game={g({ broadcast: ['NBC'] })} tz={TZ} />
+      </ServicesProvider>
+    )
+    expect(within(container.querySelector('.watch')).getByText('Peacock')).toBeInTheDocument()
+    const plain = [...container.querySelectorAll('.game-meta > span')].map((s) => s.textContent)
+    expect(plain).toContain('NBC')
+  })
+
+  it('shows no services badge until services are chosen', () => {
+    const { container } = render(
+      <ServicesProvider>
+        <GameCard game={g({ broadcast: ['NBC'] })} tz={TZ} />
+      </ServicesProvider>
+    )
+    expect(container.querySelector('.watch')).toBeNull()
+  })
+
+  it('flags a regional Sunday CBS/FOX game and not a national one', () => {
+    // 2026-09-13 is a Sunday; 1:00pm ET on FOX = regional.
+    const { container, unmount } = render(
+      <GameCard game={g({ broadcast: ['FOX'], tip: '2026-09-13T17:00:00.000Z' })} tz={TZ} />
+    )
+    expect(container.querySelector('.regional')).toBeTruthy()
+    unmount()
+    // A national window (Sunday night on NBC) is not flagged.
+    const { container: c2 } = render(
+      <GameCard game={g({ broadcast: ['NBC'], tip: '2026-09-14T00:20:00.000Z' })} tz={TZ} />
+    )
+    expect(c2.querySelector('.regional')).toBeNull()
   })
 })

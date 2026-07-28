@@ -9,6 +9,7 @@ describe('readState', () => {
       team: '',
       game: '',
       week: null,
+      season: null,
       hide: false,
       mine: false,
       past: false,
@@ -16,12 +17,17 @@ describe('readState', () => {
   })
 
   it('reads every supported key', () => {
-    expect(readState('?view=stats&tz=America/Chicago&team=KC&game=401800001&week=7&hide=1&mine=1&past=1')).toEqual({
+    expect(
+      readState(
+        '?view=stats&tz=America/Chicago&team=KC&game=401800001&week=7&season=2023&hide=1&mine=1&past=1'
+      )
+    ).toEqual({
       view: 'stats',
       tz: 'America/Chicago',
       team: 'KC',
       game: '401800001',
       week: 7,
+      season: 2023,
       hide: true,
       mine: true,
       past: true,
@@ -69,6 +75,23 @@ describe('isValidZone', () => {
   })
 })
 
+describe('the history view and its season', () => {
+  it('accepts the history view', () => {
+    expect(readState('?view=history').view).toBe('history')
+  })
+
+  it('ignores a season that is not a four-digit year', () => {
+    expect(readState('?season=nope').season).toBeNull()
+    expect(readState('?season=23').season).toBeNull()
+  })
+
+  it('writes the season whichever view is showing', () => {
+    expect(toSearch({ view: 'history', season: 2022 }, 'America/New_York')).toBe(
+      '?view=history&season=2022'
+    )
+  })
+})
+
 describe('toSearch', () => {
   const detected = 'America/New_York'
 
@@ -103,6 +126,7 @@ describe('toSearch', () => {
       team: 'GB',
       game: '',
       week: 12,
+      season: 2022,
       hide: true,
       mine: true,
       past: true,

@@ -48,7 +48,7 @@ function Slot({ abbr, seed, score, isWinner, decided, onPick }) {
 
 // A single-elimination matchup. `m` may be entirely projected (both seeds greyed) or have a
 // null side (TBD). Score is [home, away]; a played game has a winner to highlight.
-function Match({ m, onPick }) {
+function Match({ m, onPick, onOpen }) {
   // Every Match is fed a real matchup object (WC/DIV arrays, CONF, sb); m is never null,
   // so this guard is defensive only.
   /* v8 ignore next */
@@ -79,10 +79,17 @@ function Match({ m, onPick }) {
         decided={decided}
         onPick={onPick}
       />
-      {(m.live || (m.statusLabel && !decided)) && (
+      {(m.live || (m.statusLabel && !decided) || (decided && m.id)) && (
         <div className="bx-match-foot">
           {m.live && <span className="bx-live">● LIVE</span>}
           {m.statusLabel && <span className="bx-match-status">{m.statusLabel}</span>}
+          {/* The matchup is the only per-game handle the bracket offers; without this
+              there's no way to ask what actually happened in a playoff game. */}
+          {decided && m.id && (
+            <button className="bx-match-open" onClick={() => onOpen?.(m)}>
+              Box score
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -110,7 +117,7 @@ function Bye({ abbr, onPick }) {
 
 // One conference's three rounds. `side` ('afc'|'nfc') lets the stylesheet mirror the NFC
 // tree so both converge on the shared Super Bowl slot in the middle.
-function ConfBracket({ conf, data, side, onPick }) {
+function ConfBracket({ conf, data, side, onPick, onOpen }) {
   return (
     <div className={`bx-conf bx-conf-${side}`}>
       <h3 className="bx-conf-label">{conf}</h3>
@@ -118,41 +125,37 @@ function ConfBracket({ conf, data, side, onPick }) {
         <div className="bx-col">
           <h4 className="bx-round">{roundShort('WC')}</h4>
           {data.WC.map((m, i) => (
-            <Match key={i} m={m} onPick={onPick} />
+            <Match key={i} m={m} onPick={onPick} onOpen={onOpen} />
           ))}
           {data.byeTeam && <Bye abbr={data.byeTeam} onPick={onPick} />}
         </div>
         <div className="bx-col">
           <h4 className="bx-round">{roundShort('DIV')}</h4>
           {data.DIV.map((m, i) => (
-            <Match key={i} m={m} onPick={onPick} />
+            <Match key={i} m={m} onPick={onPick} onOpen={onOpen} />
           ))}
         </div>
         <div className="bx-col">
           <h4 className="bx-round">{roundShort('CONF')}</h4>
-          <Match m={data.CONF} onPick={onPick} />
+          <Match m={data.CONF} onPick={onPick} onOpen={onOpen} />
         </div>
       </div>
     </div>
   )
 }
 
-export default function Bracket({ games, tz, onPick }) {
-  const bracket = useMemo(() => buildBracket(games), [games])
+// The bracket itself, without the page heading around it.
+//
+// Split out from the Playoffs view so the History tab can render an archived season
+// through exactly this component. A historical season ships its final standings and only
+// its 13 postseason games, so it passes `seeds` in rather than having them derived from
+// regular-season results it doesn't carry.
+export function BracketBody({ games, seeds, tz, onPick, onOpen }) {
+  const bracket = useMemo(() => buildBracket(games, seeds), [games, seeds])
   const { conferences, sb, champion, regularSeasonStarted, hasPostseason } = bracket
 
   return (
-    <section className="view">
-      <div className="view-head">
-        <div>
-          <h2>Playoffs</h2>
-          <p className="sub">
-            Seven teams per conference. The No.&nbsp;1 seed earns a first-round bye; every
-            round re-seeds so the top remaining seed hosts. Single elimination.
-          </p>
-        </div>
-      </div>
-
+    <>
       {!regularSeasonStarted ? (
         <div className="card">
           <h3 className="card-title">The bracket isn&apos;t set yet</h3>
@@ -172,25 +175,50 @@ export default function Bracket({ games, tz, onPick }) {
 
           {champion && (
             <p className="banner banner-champ">
-              🏆 <strong>{TEAM_BY_ABBR[champion]?.displayName}</strong> win the Super Bowl.
+              🏆 <strong>{TEAM_BY_ABBR[champion]?.displayName}</strong> win the Super Bowl
+              {sb.score && (
+                <>
+                  , beating {TEAM_BY_ABBR[sb.home === champion ? sb.away : sb.home]?.displayName}{' '}
+                  {Math.max(...sb.score)}–{Math.min(...sb.score)}
+                </>
+              )}
+              .
             </p>
           )}
 
           <div className="bx-bracket">
-            <ConfBracket conf="AFC" data={conferences.AFC} side="afc" onPick={onPick} />
+            <ConfBracket conf="AFC" data={conferences.AFC} side="afc" onPick={onPick} onOpen={onOpen} />
 
             <div className="bx-sb">
               <h4 className="bx-sb-label">{roundName('SB')}</h4>
-              <Match m={sb} onPick={onPick} />
+              <Match m={sb} onPick={onPick} onOpen={onOpen} />
               {champion && (
                 <div className="bx-sb-champ">🏆 {TEAM_BY_ABBR[champion]?.name}</div>
               )}
             </div>
 
-            <ConfBracket conf="NFC" data={conferences.NFC} side="nfc" onPick={onPick} />
+            <ConfBracket conf="NFC" data={conferences.NFC} side="nfc" onPick={onPick} onOpen={onOpen} />
           </div>
         </>
       )}
+    </>
+  )
+}
+
+export default function Bracket({ games, tz, onPick, onOpen }) {
+  return (
+    <section className="view">
+      <div className="view-head">
+        <div>
+          <h2>Playoffs</h2>
+          <p className="sub">
+            Seven teams per conference. The No.&nbsp;1 seed earns a first-round bye; every
+            round re-seeds so the top remaining seed hosts. Single elimination.
+          </p>
+        </div>
+      </div>
+
+      <BracketBody games={games} tz={tz} onPick={onPick} onOpen={onOpen} />
     </section>
   )
 }

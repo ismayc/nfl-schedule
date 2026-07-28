@@ -111,7 +111,7 @@ export async function fetchSchedule(teams, season = SEASON) {
 // Conference + division membership. The teams feed carries neither (PLAYBOOK §2, trap 1),
 // so pull it from the standings tree. NFL needs the DIVISION level, which requires
 // `level=3` — the default tree only nests conference → 16 teams.
-async function fetchGroups() {
+export async function fetchGroups() {
   const conf = {}
   const div = {}
   try {
@@ -222,9 +222,9 @@ const round = (v, p = 1) =>
 const precisionFor = (key) =>
   /Pct$|rating|Avg$|Ypg$/.test(key) || key === 'cmpPct' ? 1 : 0
 
-async function fetchLeaders() {
+export async function fetchLeaders(season = SEASON) {
   const d = await getJson(
-    `${WEB}/${ESPN_PATH}/statistics/byathlete?region=us&lang=en&season=${SEASON}&seasontype=2&limit=300`
+    `${WEB}/${ESPN_PATH}/statistics/byathlete?region=us&lang=en&season=${season}&seasontype=2&limit=300`
   )
   // The category name→index mapping is defined once at the top level; each athlete's
   // per-category `values` array aligns to it index-for-index.

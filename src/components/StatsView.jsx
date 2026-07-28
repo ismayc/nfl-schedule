@@ -12,7 +12,7 @@ const wlt = (r) => `${r.w}-${r.l}${r.t ? `-${r.t}` : ''}`
 // Single headline numbers, so these are stat tiles rather than a chart. The three
 // tiles with a story behind them expand into the actual games.
 
-function Tile({ label, value, sub, title, onClick, open }) {
+export function Tile({ label, value, sub, title, onClick, open }) {
   const Cmp = onClick ? 'button' : 'div'
   return (
     <Cmp className={`tile ${onClick ? 'tile-btn' : ''} ${open ? 'open' : ''}`} onClick={onClick} title={title}>
@@ -25,25 +25,30 @@ function Tile({ label, value, sub, title, onClick, open }) {
 }
 
 // Score is stored [home, away]; the away team is shown on the left, matching "away @ home".
-function GameList({ games, tz, note }) {
+// Each row opens that game's box score when the caller wants it — a drill-down that
+// names games and then can't show you any of them is a dead end.
+export function GameList({ games, tz, note, onOpen }) {
+  const Row = onOpen ? 'button' : 'span'
   return (
     <ul className="drill">
       {games.map((g) => (
         <li key={g.id}>
-          <span className="drill-date">{formatDate(g.tip, tz)}</span>
-          <TeamLogo abbr={g.away} size={18} />
-          <span className="drill-score">
-            {g.score[1]} – {g.score[0]}
-          </span>
-          <TeamLogo abbr={g.home} size={18} />
-          <span className="drill-note">{note(g)}</span>
+          <Row className="drill-row" onClick={onOpen ? () => onOpen(g) : undefined}>
+            <span className="drill-date">{formatDate(g.tip, tz)}</span>
+            <TeamLogo abbr={g.away} size={18} />
+            <span className="drill-score">
+              {g.score[1]} – {g.score[0]}
+            </span>
+            <TeamLogo abbr={g.home} size={18} />
+            <span className="drill-note">{note(g)}</span>
+          </Row>
         </li>
       ))}
     </ul>
   )
 }
 
-function TotalsStrip({ games, tz }) {
+function TotalsStrip({ games, tz, onOpen }) {
   const t = useMemo(() => seasonTotals(games), [games])
   const [open, setOpen] = useState(null)
   const toggle = (k) => setOpen((v) => (v === k ? null : k))
@@ -84,8 +89,8 @@ function TotalsStrip({ games, tz }) {
           note={(g) => `by ${g.margin}`}
         />
       )}
-      {open === 'ot' && <GameList games={t.overtimes} tz={tz} note={() => 'OT'} />}
-      {open === 'ties' && <GameList games={t.ties} tz={tz} note={() => 'tie'} />}
+      {open === 'ot' && <GameList games={t.overtimes} tz={tz} onOpen={onOpen} note={() => 'OT'} />}
+      {open === 'ties' && <GameList games={t.ties} tz={tz} onOpen={onOpen} note={() => 'tie'} />}
     </div>
   )
 }
@@ -102,8 +107,7 @@ const UNITS = [
   { key: 'defense', label: 'Defense' },
 ]
 
-function LeaderBoard({ cat, onPickTeam, onPickPlayer }) {
-  const rows = useMemo(() => leaderboard(cat.key, { limit: 5 }), [cat.key])
+function LeaderBoard({ cat, rows, onPickTeam, onPickPlayer }) {
   const max = rows[0]?.value || 1
   if (rows.length === 0) return null
 
@@ -138,10 +142,13 @@ function LeaderBoard({ cat, onPickTeam, onPickPlayer }) {
   )
 }
 
-function Leaders({ onPickTeam, onPickPlayer }) {
-  // PLAYERS is empty until the season starts, so leaderboard() returns [] for every
-  // category. Show one honest line rather than four empty cards.
-  const anyData = useMemo(() => LEADER_CATEGORIES.some((c) => leaderboard(c.key, { limit: 1 }).length > 0), [])
+// `getRows(cat)` supplies each board: the live view computes it from the committed
+// PLAYERS table, the History tab reads the season's stored board (which fetch-history
+// built with this same leaderboard(), ranks and ties included).
+export function Leaders({ getRows, onPickTeam, onPickPlayer }) {
+  // PLAYERS is empty until the season starts, so every category comes back empty. Show
+  // one honest line rather than four empty cards.
+  const anyData = useMemo(() => LEADER_CATEGORIES.some((c) => getRows(c).length > 0), [getRows])
 
   if (!anyData) {
     return (
@@ -161,7 +168,13 @@ function Leaders({ onPickTeam, onPickPlayer }) {
             <h3 className="conf-group-title">{u.label} leaders</h3>
             <div className="grid-2">
               {cats.map((c) => (
-                <LeaderBoard key={c.key} cat={c} onPickTeam={onPickTeam} onPickPlayer={onPickPlayer} />
+                <LeaderBoard
+                  key={c.key}
+                  cat={c}
+                  rows={getRows(c)}
+                  onPickTeam={onPickTeam}
+                  onPickPlayer={onPickPlayer}
+                />
               ))}
             </div>
           </div>
@@ -179,8 +192,7 @@ function Leaders({ onPickTeam, onPickPlayer }) {
 // Deliberately labelled "points per game" and not "efficiency" or "rating": those
 // are per-possession measures, and the public feeds expose no possession counts.
 
-function MarginChart({ games, onPickTeam }) {
-  const rows = useMemo(() => teamScoring(games), [games])
+export function MarginChart({ rows, onPickTeam }) {
 
   if (rows.length === 0) {
     return (
@@ -308,15 +320,18 @@ function PlayoffRace({ games, onPickTeam }) {
   )
 }
 
-export default function StatsView({ games, tz, onPickTeam, onPickPlayer }) {
+// Stable identity so the Leaders memo doesn't recompute on every parent render.
+const liveLeaders = (cat) => leaderboard(cat.key, { limit: 5 })
+
+export default function StatsView({ games, tz, onPickTeam, onPickPlayer, onOpen }) {
   return (
     <section className="view">
       <div className="view-head">
         <h2>Stats</h2>
       </div>
-      <TotalsStrip games={games} tz={tz} />
-      <Leaders onPickTeam={onPickTeam} onPickPlayer={onPickPlayer} />
-      <MarginChart games={games} onPickTeam={onPickTeam} />
+      <TotalsStrip games={games} tz={tz} onOpen={onOpen} />
+      <Leaders getRows={liveLeaders} onPickTeam={onPickTeam} onPickPlayer={onPickPlayer} />
+      <MarginChart rows={teamScoring(games)} onPickTeam={onPickTeam} />
       <PlayoffRace games={games} onPickTeam={onPickTeam} />
     </section>
   )

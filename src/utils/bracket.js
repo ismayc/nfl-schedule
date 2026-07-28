@@ -120,8 +120,12 @@ function buildConference(confKey, field, confGames, seedOf) {
   return { conference: confKey, seeds: field, byeTeam, WC, DIV, CONF, champion: winnerOf(CONF) }
 }
 
-export function buildBracket(games) {
-  const seeds = conferenceSeeds(games)
+// `seeds` lets a caller supply the seeded conference tables instead of deriving them
+// from `games`. A historical season commits its final standings and only its 13
+// postseason games (see data/history.js), so there are no regular-season results to seed
+// from — passing them in means an archived bracket renders through this same function
+// rather than a parallel one.
+export function buildBracket(games, seeds = conferenceSeeds(games)) {
   const seedOf = {}
   for (const conf of CONFERENCE_KEYS) for (const r of seeds[conf]) seedOf[r.abbr] = r.seed
 
@@ -158,8 +162,10 @@ export function buildBracket(games) {
     champion: winnerOf(sb),
     seeds,
     // Seeds are only meaningful once games have been played; before Week 1 the whole
-    // field is tied and the bracket is a placeholder.
-    regularSeasonStarted: games.some(countsForStandings),
+    // field is tied and the bracket is a placeholder. Postseason games prove the regular
+    // season happened even when it isn't in `games` — which is exactly the case for an
+    // archived season, where only the 13 playoff games are committed.
+    regularSeasonStarted: games.some(countsForStandings) || postseason.length > 0,
     hasPostseason: postseason.length > 0,
   }
 }

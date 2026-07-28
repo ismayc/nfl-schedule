@@ -16,6 +16,7 @@ export const VIEWS = [
   { id: 'standings', label: '📊 Standings' },
   { id: 'playoffs', label: '🏆 Playoffs' },
   { id: 'stats', label: '📈 Stats' },
+  { id: 'history', label: '📜 History' },
 ]
 
 const VALID_VIEWS = VIEWS.map((v) => v.id)
@@ -25,6 +26,7 @@ export const DEFAULTS = {
   tz: null, // no default — falls back to the detected zone
   team: '',
   week: null, // Week view's selected week; null = current/first upcoming
+  season: null, // History view's chosen season; null = the newest archived one
   hide: false,
   mine: false,
   past: false,
@@ -48,6 +50,10 @@ export function readState(search = window.location.search) {
     // write returns the URL to plain shareable filter state.
     game: p.get('game') || '',
     week: Number.isInteger(week) && week >= 1 && week <= 18 ? week : null,
+    // Which archived season the History view opens on. Validated as a 4-digit year only
+    // — HistoryView falls back to its newest season for anything it doesn't hold, so a
+    // stale link can't render an empty page.
+    season: /^\d{4}$/.test(p.get('season') || '') ? Number(p.get('season')) : DEFAULTS.season,
     hide: p.get('hide') === '1',
     mine: p.get('mine') === '1',
     past: p.get('past') === '1',
@@ -72,6 +78,7 @@ export function toSearch(state, detectedTz) {
   if (state.team) p.set('team', state.team)
   // The week is only meaningful in the Week view.
   if (state.view === 'week' && state.week) p.set('week', String(state.week))
+  if (state.season) p.set('season', String(state.season))
   if (state.hide) p.set('hide', '1')
   if (state.mine) p.set('mine', '1')
   if (state.past) p.set('past', '1')

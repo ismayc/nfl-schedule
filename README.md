@@ -24,6 +24,7 @@ snapshot of the season — it renders a complete season with **zero requests on 
 | 📊 **Standings** | By division (all eight, division winners marked) or by conference (seeded 1–16 with the playoff cutline). W-L-**T**, win %, points for/against and differential, home/road and division splits, streak. |
 | 🏆 **Playoffs** | The single-elimination bracket — seven seeds per conference, the No. 1 seed's bye, re-seeding every round, the two conferences converging on the Super Bowl. Projected from the standings until the field is set. |
 | 📈 **Stats** | Season totals, league leaders across passing / rushing / receiving / defense, scoring margin, and the playoff race per conference. |
+| 📜 **History** | Every completed season back to **2021**, in three modes: one season in full (bracket + both final tables), that season's **stats** (totals, all eight leaderboards, scoring margin), and every **Super Bowl** with the seed each finalist came from. |
 
 **Star a team** from any game card, standings row, or team panel to highlight it across
 every view, filter the schedule to "My teams", and scope live alerts to it. Clicking any
@@ -82,6 +83,38 @@ from pre-aggregated season stat lines rather than being summed from events. The 
 shows the **quarter** (`Q3`, `OT`) rather than a running clock a 30-second poll can't keep
 honest, and alerts surface moments that change how a game *feels* — kickoff, a lead change,
 a one-score fourth quarter (within 8), and the final — by diffing poll snapshots.
+
+### The archive
+
+`src/data/history.js` holds every completed season back to **2021**. The floor is where
+two format changes line up: the playoffs went to 14 teams in 2020 (seven seeds a
+conference, only the 1 seed on a bye, re-seeded every round — the bracket this app
+models), and the regular season went to 17 games in 2021. Starting there means every
+archived season is directly comparable with the one on screen.
+
+Each season commits its **final conference standings**, its **13 postseason games**, its
+**season totals**, and its **leader boards** (as `{id, rank, value}` against a deduped
+per-season player table). The ~272 regular-season games are summarised into those totals
+rather than committed, which is why five extra seasons cost ~145KB.
+
+Nothing derived is committed. The bracket is rebuilt at runtime by the same
+`buildBracket()` the live season uses — it takes the committed seeds as an optional
+second argument, since an archived season has no regular-season games to seed from. The
+leader boards were built by the same `leaderboard()`, and the scoring margin re-derives
+through the same `rankScoring()`. Box scores aren't committed either: the detail modal
+fetches them from ESPN by event id, and every archived game has one.
+
+```bash
+npm run fetch:history        # rebuilds the archive (a season in progress is skipped)
+```
+
+A season joins the archive by itself the week its Super Bowl is played: the script runs
+up to the season the app is on and drops any season with no champion.
+
+One real-world wrinkle the data keeps honest: **2022 was a 271-game season**. The
+Buffalo–Cincinnati game was abandoned after Damar Hamlin's cardiac arrest and never made
+up, so those two teams played 16 games, not 17. The tests assert that specifically rather
+than a flat "every team plays 17".
 
 ## Develop
 

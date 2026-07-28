@@ -1116,10 +1116,31 @@ select:hover,
 }
 
 .drill li {
+  padding: 0;
+}
+
+/* The row is a button when the caller wires one, a plain span otherwise — same box
+   either way, so the two forms sit identically in the list. */
+.drill-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   padding: 5px 2px;
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.drill-row {
+  cursor: pointer;
+}
+
+button.drill-row:hover {
+  background: var(--card-hover);
 }
 
 .drill-date {
@@ -2953,4 +2974,84 @@ select:hover,
     max-width: none;
     min-width: 0;
   }
+}
+
+/* ── History ────────────────────────────────────────────────────────── */
+/* Archived seasons. The bracket, stats cards and tables are the live components, so
+   this only styles what's new: the mode switch, the season picker, and the tables. */
+.view-tools {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hy-pick {
+  margin-bottom: 12px;
+}
+
+.hy-note {
+  margin-bottom: 12px;
+  max-width: none;
+}
+
+.hy-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.hy-team:hover {
+  color: var(--accent);
+}
+
+.hy-year {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hy-table td,
+.hy-table th {
+  font-size: 13px;
+}
+
+/* Two conference tables side by side on a wide screen, stacked on a phone. */
+.conf-groups {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+@media (min-width: 1000px) {
+  .conf-groups {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* The bracket's per-game handle: opens that playoff game's box score. */
+.bx-match-open {
+  margin-left: auto;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.bx-match-open:hover {
+  text-decoration: underline;
 }

@@ -107,7 +107,7 @@ const UNITS = [
   { key: 'defense', label: 'Defense' },
 ]
 
-function LeaderBoard({ cat, rows, onPickTeam, onPickPlayer }) {
+function LeaderBoard({ cat, rows, onPickTeam, onPickPlayer, showTeam }) {
   const max = rows[0]?.value || 1
   if (rows.length === 0) return null
 
@@ -119,11 +119,13 @@ function LeaderBoard({ cat, rows, onPickTeam, onPickPlayer }) {
           {rows.map((p) => (
             <tr key={p.id}>
               <td className="lead-rank">{p.rank}</td>
-              <td className="lead-team">
-                <button onClick={() => onPickTeam?.(p.team)} title={p.team}>
-                  <TeamLogo abbr={p.team} size={20} />
-                </button>
-              </td>
+              {showTeam && (
+                <td className="lead-team">
+                  <button onClick={() => onPickTeam?.(p.team)} title={p.team}>
+                    <TeamLogo abbr={p.team} size={20} />
+                  </button>
+                </td>
+              )}
               <td className="lead-name">
                 <button className="lead-player" onClick={() => onPickPlayer?.(p)}>
                   {p.name}
@@ -145,7 +147,11 @@ function LeaderBoard({ cat, rows, onPickTeam, onPickPlayer }) {
 // `getRows(cat)` supplies each board: the live view computes it from the committed
 // PLAYERS table, the History tab reads the season's stored board (which fetch-history
 // built with this same leaderboard(), ranks and ties included).
-export function Leaders({ getRows, onPickTeam, onPickPlayer }) {
+// `showTeam` is off for archived seasons. ESPN's per-athlete stats carry the player's
+// CURRENT team even when the season is asked for, and only for players who later moved —
+// so a historical board would silently mix correct and anachronistic badges. The name,
+// rank and value are season-accurate; the team is not, so it isn't shown.
+export function Leaders({ getRows, onPickTeam, onPickPlayer, showTeam = true }) {
   // PLAYERS is empty until the season starts, so every category comes back empty. Show
   // one honest line rather than four empty cards.
   const anyData = useMemo(() => LEADER_CATEGORIES.some((c) => getRows(c).length > 0), [getRows])
@@ -174,6 +180,7 @@ export function Leaders({ getRows, onPickTeam, onPickPlayer }) {
                   rows={getRows(c)}
                   onPickTeam={onPickTeam}
                   onPickPlayer={onPickPlayer}
+                  showTeam={showTeam}
                 />
               ))}
             </div>

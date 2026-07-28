@@ -217,7 +217,18 @@ function SeasonStats({ season, tz, onPickTeam, onPickPlayer, onOpen }) {
         </p>
       </div>
 
-      <Leaders getRows={getRows} onPickTeam={onPickTeam} onPickPlayer={onPickPlayer} />
+      <Leaders
+        getRows={getRows}
+        onPickTeam={onPickTeam}
+        onPickPlayer={onPickPlayer}
+        showTeam={false}
+      />
+      <p className="fine">
+        Leaders show no team badge: ESPN reports a player&apos;s current club even when an
+        older season is asked for, and only for players who later moved — so the badges
+        would be right for some rows and wrong for others. The names and numbers are that
+        season&apos;s.
+      </p>
 
       <MarginChart rows={rows} onPickTeam={onPickTeam} />
     </>

@@ -8,7 +8,7 @@
 //
 //   node scripts/fetch-schedule.mjs [--season 2026] [--no-logos]
 
-import { writeFile, mkdir } from 'node:fs/promises'
+import { writeFile, mkdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { SITE, CORE, WEB, getJson, fetchTeams, broadcastNames, monthRange, banner } from './lib/espn.mjs'
@@ -292,6 +292,70 @@ async function mirrorLogos(teams) {
   return { n, kb: Math.round(bytes / 1024) }
 }
 
+
+// A refresh commits straight to main and redeploys the site, with no human in the loop.
+// So the one failure this pipeline must never have is a QUIET one: ESPN answering 200
+// with half a season, which no retry can detect and which would publish a gutted
+// schedule. Compare against what's already committed and refuse to shrink.
+//
+// Legitimate shrinkage exists — a cancelled game disappears, or `--season` moves to a
+// different year — so this is a floor, not an equality check, and `--allow-shrink`
+// overrides it.
+const SHRINK_FLOOR = 0.9
+
+async function guardAgainstShrink(games, file, label) {
+  if (process.argv.includes('--allow-shrink')) return
+  let previous
+  try {
+    previous = (await readFile(join(ROOT, file), 'utf8')).match(/^ {2}\{"id"/gm)?.length ?? 0
+  } catch {
+    return // first run — nothing to compare against
+  }
+  if (!previous) return
+  const floor = Math.floor(previous * SHRINK_FLOOR)
+  if (games.length < floor) {
+    throw new Error(
+      `${label} shrank from ${previous} to ${games.length} (floor ${floor}).\n` +
+        `  A partial fetch would publish a gutted snapshot, so nothing was written.\n` +
+        `  Re-run; pass --allow-shrink if the drop is real (a season change, say).`
+    )
+  }
+}
+
+// ESPN intermittently drops `broadcast` from games that have already been played, then
+// restores it a few hours later. Left alone, the twice-daily refresh commits that flap
+// back and forth forever (it did exactly that in the NBA sibling on 2026-07-27). A
+// finished game cannot legitimately lose its listings, so committed broadcast data is
+// sticky: if the feed has stopped reporting it, keep what we already have.
+async function keepKnownBroadcasts(games, file) {
+  let committed
+  try {
+    committed = await readFile(join(ROOT, file), 'utf8')
+  } catch {
+    return 0
+  }
+  const known = new Map()
+  for (const line of committed.split('\n')) {
+    const m = line.match(/^ {2}(\{"id".*\}),?$/)
+    if (!m) continue
+    try {
+      const g = JSON.parse(m[1])
+      if (g.broadcast?.length) known.set(g.id, g.broadcast)
+    } catch {
+      /* a line we can't parse simply isn't a source of truth */
+    }
+  }
+  let restored = 0
+  for (const g of games) {
+    if (g.broadcast?.length || !known.has(g.id)) continue
+    // Only for games in the past: an upcoming game losing its listing is real news.
+    if (new Date(g.tip) > new Date()) continue
+    g.broadcast = known.get(g.id)
+    restored++
+  }
+  return restored
+}
+
 async function main() {
   console.log(`Fetching ${SEASON} NFL teams…`)
   const teams = await fetchTeams(ESPN_PATH)
@@ -309,6 +373,9 @@ async function main() {
   console.log(`  ${games.length} games`, counts)
 
   // Enriches `games` in place — must run before schedule.js is written.
+  const restored = await keepKnownBroadcasts(games, 'src/data/schedule.js')
+  if (restored) console.log(`  kept ${restored} broadcast listing(s) the feed dropped`)
+
   console.log('Fetching line scores…')
   console.log(`  ${await enrichWithBoxScores(games)} games with quarter breakdowns`)
 
@@ -326,6 +393,8 @@ async function main() {
       `export const CONFERENCE_BY_ABBR = ${JSON.stringify(conf, null, 2)}\n\n` +
       `export const DIVISION_BY_ABBR = ${JSON.stringify(div, null, 2)}\n`
   )
+
+  await guardAgainstShrink(games, 'src/data/schedule.js', 'the schedule')
 
   await writeFile(
     join(ROOT, 'src/data/schedule.js'),

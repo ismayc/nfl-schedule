@@ -131,8 +131,8 @@ export const TEAMS = [
     "name": "Texans",
     "location": "Houston",
     "displayName": "Houston Texans",
-    "color": "#00143f",
-    "altColor": "#c41230"
+    "color": "#021018",
+    "altColor": "#eb0028"
   },
   {
     "id": "11",

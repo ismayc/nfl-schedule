@@ -11,9 +11,10 @@ import TeamLogo from './TeamLogo.jsx'
 
 // Both are called only with the literal round keys WC/DIV/CONF/SB, which always resolve,
 // so the optional-chain and `|| key` fallbacks are unreachable.
-/* v8 ignore next 2 */
+/* v8 ignore start */
 const roundShort = (key) => PLAYOFF.rounds.find((r) => r.key === key)?.short || key
 const roundName = (key) => PLAYOFF.rounds.find((r) => r.key === key)?.name || key
+/* v8 ignore stop */
 
 // One side of a matchup: seed + logo + name (+ score once played). The team is a button
 // that opens the team panel via onPick — the slot itself is never a button, so there is no
@@ -100,9 +101,10 @@ function Match({ m, onPick, onOpen }) {
 function Bye({ abbr, onPick }) {
   // Bye renders only behind a truthy `data.byeTeam` guard, so abbr is always a real team;
   // the `: null` and `if (!team)` fallbacks are unreachable.
-  /* v8 ignore next 2 */
+  /* v8 ignore start */
   const team = abbr ? TEAM_BY_ABBR[abbr] : null
   if (!team) return null
+  /* v8 ignore stop */
   return (
     <div className="bx-bye">
       <span className="bx-seed">1</span>

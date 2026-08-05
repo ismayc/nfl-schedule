@@ -460,6 +460,57 @@ describe('App — the live overlay', () => {
     })
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
+
+  it('retires a toast on its own, then polls again on the live cadence', async () => {
+    vi.useFakeTimers()
+    localStorage.setItem('nfl:alerts', '1')
+    fetch.mockImplementation(async () => ({ ok: true, json: async () => ({ events: ev(false) }) }))
+
+    renderApp()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(screen.getByRole('status')).toBeInTheDocument()
+
+    // Nobody dismissed it; the 9s timeout drops it off the bottom of the stack.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(9000)
+    })
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+    // A game is live, so the interval runs at the 30s cadence rather than 2 minutes.
+    const before = fetch.mock.calls.length
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(21_000)
+    })
+    expect(fetch.mock.calls.length).toBeGreaterThan(before)
+  })
+
+  it('stacks a second moment on top of a toast already showing', async () => {
+    localStorage.setItem('nfl:alerts', '1')
+    // Each poll fans out over three days, so gate by round: round 1 kicks the game
+    // off, round 2 finals it. Going live flips nLive, which re-runs the poll effect
+    // immediately — the only gap narrower than the 9s toast TTL. Holding round 2
+    // until the kickoff toast is up keeps the two on screen together.
+    let release
+    const gate = new Promise((r) => { release = r })
+    let calls = 0
+    fetch.mockImplementation(async () => {
+      calls += 1
+      if (calls <= 3) return { ok: true, json: async () => ({ events: ev(false) }) }
+      await gate
+      return { ok: true, json: async () => ({ events: ev(true) }) }
+    })
+
+    renderApp()
+    const stack = await screen.findByRole('status')
+    expect(stack).toHaveTextContent('Kickoff')
+    release()
+    // The final lands on top of the kickoff still showing — the only time the
+    // already-seen key set is built from a non-empty stack.
+    await waitFor(() => expect(stack).toHaveTextContent('Final'))
+    expect(stack).toHaveTextContent('Kickoff')
+  })
 })
 
 describe('game deep link', () => {

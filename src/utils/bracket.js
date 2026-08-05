@@ -37,8 +37,9 @@ const findGame = (roundGames, a, b) =>
   // The reversed (b/a) operand is a symmetry guard: every caller passes a=game.home,
   // b=game.away, so the forward operand always matches first — the reversed branch is
   // unreachable with real round games.
-  /* v8 ignore next */
+  /* v8 ignore start */
   roundGames.find((g) => (g.home === a && g.away === b) || (g.home === b && g.away === a))
+/* v8 ignore stop */
 
 // One matchup: the actual game if we have it, otherwise a projected pairing with the
 // higher seed (lower number) hosting. Either participant may be null (TBD).
@@ -83,8 +84,9 @@ function buildConference(confKey, field, confGames, seedOf) {
         .map((g) => matchup('WC', g.home, g.away, wcGames, seedOf))
         // Both Wild Card teams are same-conference seeds, so seedHome is always defined;
         // the `?? 99` fallbacks are unreachable.
-        /* v8 ignore next */
+        /* v8 ignore start */
         .sort((a, b) => (a.seedHome ?? 99) - (b.seedHome ?? 99))
+    /* v8 ignore stop */
     : PLAYOFF.wildCardPairs.map(([hi, lo]) => matchup('WC', bySeed[hi], bySeed[lo], [], seedOf))
 
   // Divisional: the bye team plus the three Wild Card winners, RE-SEEDED so the top

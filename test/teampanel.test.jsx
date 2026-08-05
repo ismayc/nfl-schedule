@@ -11,6 +11,7 @@ import TeamPanel from '../src/components/TeamPanel.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
 import { GAMES } from '../src/data/schedule.js'
 import { GAMES_2025 } from './fixtures/season-2025.js'
+import { HISTORY } from '../src/data/history.js'
 
 // A QB with TDs and one without; an RB and a fullback; a receiver with and without
 // receptions; and an edge rusher with no scrimmage yardage — one player for each branch
@@ -256,5 +257,53 @@ describe('TeamPanel — interactions', () => {
     open('GB', { onClose })
     await userEvent.keyboard('{Escape}')
     expect(onClose).toHaveBeenCalled()
+  })
+})
+
+describe('TeamPanel opened from an archived season', () => {
+  // Regression: the panel was rendered once at App level off the live board, so
+  // clicking a team in the History view described the CURRENT season — the wrong
+  // record, the wrong seed, and a roster of players who were not on that team
+  // that year. Given a season it must describe that season instead.
+  const archived = HISTORY[0]
+  const target = Object.values(archived.standings).flat()[0]
+
+  const openArchived = () =>
+    render(
+      <FollowProvider>
+        <TeamPanel abbr={target.abbr} season={archived} games={GAMES} tz={TZ} onClose={() => {}} />
+      </FollowProvider>,
+    )
+
+  it('shows that season’s record, division and seed', () => {
+    const { container } = openArchived()
+    const sub = container.querySelector('.tp-sub')
+    const record = target.t ? `${target.w}–${target.l}–${target.t}` : `${target.w}–${target.l}`
+    expect(sub).toHaveTextContent(record)
+    expect(sub).toHaveTextContent(target.division)
+    expect(sub).toHaveTextContent(`seed ${target.seed}`)
+  })
+
+  it('scores that season’s per-game figures from its committed totals', () => {
+    const { container } = openArchived()
+    const tiles = [...container.querySelectorAll('.tp-stat')].map((n) => n.textContent).join(' ')
+    const gp = target.w + target.l + (target.t || 0)
+    expect(tiles).toContain((target.pf / gp).toFixed(1))
+    expect(tiles).toContain((target.pa / gp).toFixed(1))
+  })
+
+  it('lists that season’s players', () => {
+    const { container } = openArchived()
+    const names = [...container.querySelectorAll('.tp-p-name')].map((n) => n.textContent)
+    const archivedNames = Object.values(archived.players)
+      .filter((p) => p.team === target.abbr)
+      .map((p) => p.name)
+    expect(names.length).toBeGreaterThan(0)
+    for (const n of names) expect(archivedNames.some((a) => n.includes(a))).toBe(true)
+  })
+
+  it('omits the recent-form strip, which the archive does not commit', () => {
+    const { container } = openArchived()
+    expect(container.querySelector('.tp-form')).toBeNull()
   })
 })

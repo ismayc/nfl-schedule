@@ -14,6 +14,10 @@ vi.mock('../src/data/schedule.js', () => ({
 
 import App from '../src/App.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
+import { HISTORY } from '../src/data/history.js'
+import { TEAM_BY_ABBR } from '../src/data/teams.js'
+
+const teamNameOf = (a) => TEAM_BY_ABBR[a]?.name ?? a
 
 const renderApp = () => render(
   <FollowProvider>
@@ -70,5 +74,49 @@ describe('App — a completed season', () => {
     // Clicking a form chip closes the panel and opens the game detail.
     await userEvent.click(panel.querySelector('.tp-chip'))
     expect(screen.getByRole('dialog', { name: 'Game detail' })).toBeInTheDocument()
+  })
+})
+
+describe('a team opened from the History view', () => {
+  // Regression: the panel was built from the live board wherever it was opened
+  // from, so a team clicked in the History view showed this season's record and
+  // this season's leading players. The season has to travel with the click.
+  it('describes the archived season, not the live one', async () => {
+    const season = HISTORY[0]
+    const rows = Object.values(season.standings).flat()
+    window.history.replaceState(null, '', `/?view=history&season=${season.year}`)
+    await mount()
+
+    const chip = document.querySelector('.standings .hy-team')
+    expect(chip).toBeTruthy()
+    const target = rows.find((r) => chip.textContent.includes(teamNameOf(r.abbr))) || rows[0]
+    await userEvent.click(chip)
+
+    const panel = await screen.findByRole('dialog')
+    const record = target.t ? `${target.w}–${target.l}–${target.t}` : `${target.w}–${target.l}`
+    expect(panel.querySelector('.tp-sub')).toHaveTextContent(record)
+    expect(panel.querySelector('.tp-sub')).toHaveTextContent(`seed ${target.seed}`)
+  })
+})
+
+describe('a team opened from the archived bracket', () => {
+  it('carries the season the bracket belongs to', async () => {
+    // The bracket reports a team by abbreviation alone, so it needs the season
+    // stamped on separately from the standings table above it.
+    const season = HISTORY[0]
+    const rows = Object.values(season.standings).flat()
+    window.history.replaceState(null, '', `/?view=history&season=${season.year}`)
+    await mount()
+
+    const btn = document.querySelector('.bx-team')
+    expect(btn).toBeTruthy()
+    const target = rows.find((r) => btn.textContent.includes(teamNameOf(r.abbr)))
+    await userEvent.click(btn)
+
+    const panel = await screen.findByRole('dialog')
+    if (target) {
+      const record = target.t ? `${target.w}–${target.l}–${target.t}` : `${target.w}–${target.l}`
+      expect(panel.querySelector('.tp-sub')).toHaveTextContent(record)
+    }
   })
 })

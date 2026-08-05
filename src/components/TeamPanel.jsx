@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { TEAM_BY_ABBR } from '../data/teams.js'
 import { playoffPicture } from '../utils/standings.js'
 import { playersByTeam } from '../utils/stats.js'
+import { seasonTeamRow, seasonPlayers } from '../utils/history.js'
 import { formatDate, formatTime, liveState } from '../utils/time.js'
 import { useModalA11y } from '../hooks/useModalA11y.js'
 import { useFollow } from '../context/follow.jsx'
@@ -63,26 +64,38 @@ function Form({ results, onOpen, gamesById }) {
   )
 }
 
-export default function TeamPanel({ abbr, games, tz, hideScores, onClose, onSchedule, onOpenGame, onPickPlayer }) {
+// `season` is an archived season when the panel was opened from the History view.
+// Everything the panel shows then has to come from THAT season — its final table,
+// its player table, its games — rather than from the live board.
+export default function TeamPanel({ abbr, season, games, tz, hideScores, onClose, onSchedule, onOpenGame, onPickPlayer }) {
   const ref = useModalA11y(onClose, !!abbr)
   const { isFollowed, toggle } = useFollow()
 
   // playoffPicture carries the full standings row plus seed / remaining / clinch state,
   // so a single call feeds the header, tiles, and form.
+  const board = season ? season.games : games
   const picture = useMemo(() => playoffPicture(games), [games])
-  const gamesById = useMemo(() => new Map(games.map((g) => [g.id, g])), [games])
+  const gamesById = useMemo(() => new Map(board.map((g) => [g.id, g])), [board])
   const row = useMemo(
-    () => (abbr ? [...picture.AFC, ...picture.NFC].find((r) => r.abbr === abbr) : null),
-    [picture, abbr]
+    () =>
+      season
+        ? seasonTeamRow(season, abbr)
+        : abbr
+          ? [...picture.AFC, ...picture.NFC].find((r) => r.abbr === abbr)
+          : null,
+    [picture, abbr, season]
   )
-  const roster = useMemo(() => (abbr ? playersByTeam(abbr).slice(0, 6) : []), [abbr])
+  const roster = useMemo(
+    () => (abbr ? playersByTeam(abbr, season ? seasonPlayers(season) : undefined).slice(0, 6) : []),
+    [abbr, season],
+  )
 
   const upcoming = useMemo(() => {
     if (!abbr) return []
-    return games
+    return board
       .filter((g) => (g.home === abbr || g.away === abbr) && !g.score && !g.postponed && !g.canceled)
       .slice(0, 5)
-  }, [games, abbr])
+  }, [board, abbr])
 
   if (!abbr || !row) return null
   const team = TEAM_BY_ABBR[abbr]

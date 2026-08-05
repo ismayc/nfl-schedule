@@ -14,6 +14,7 @@ import ScheduleView from './components/ScheduleView.jsx'
 import StandingsView from './components/StandingsView.jsx'
 import StatsView from './components/StatsView.jsx'
 import HistoryView from './components/HistoryView.jsx'
+import { HISTORY } from './data/history.js'
 import Bracket from './components/Bracket.jsx'
 import GameDetail from './components/GameDetail.jsx'
 import WeekView from './components/WeekView.jsx'
@@ -84,8 +85,15 @@ export default function App() {
   })
   const [toasts, setToasts] = useState([])
   const [teamPanel, setTeamPanel] = useState(null)
+  // Which season the open team panel describes. null = the live one; a year
+  // means it was opened from the History view and must show that season.
+  const [panelYear, setPanelYear] = useState(null)
   const [playerModal, setPlayerModal] = useState(null)
   const [showCalendar, setShowCalendar] = useState(false)
+  // Opening a team from anywhere in the live season; the History view uses the
+  // variant below, which remembers which season the click came from.
+  const pickTeam = (abbr) => (setPanelYear(null), setTeamPanel(abbr))
+  const pickHistoryTeam = (abbr, year) => (setPanelYear(year), setTeamPanel(abbr))
   const [showServices, setShowServices] = useState(false)
   const prevGames = useRef(null)
   const filterBarRef = useRef(null)
@@ -99,6 +107,8 @@ export default function App() {
   // Committed schedule + live overlay. Everything downstream is derived from this.
   const games = useMemo(() => applyLive(GAMES, live), [live])
   const nLive = useMemo(() => liveCount(games), [games])
+  // The archived season a History-opened panel describes, or null for the live one.
+  const panelSeason = panelYear == null ? null : HISTORY.find((x) => x.year === panelYear)
 
   // Poll faster while games are in progress, and not at all once the season is over.
   const seasonOver = useMemo(
@@ -460,15 +470,15 @@ export default function App() {
             onOpen={setDetail}
           />
         )}
-        {view === 'standings' && <StandingsView games={games} onPick={setTeamPanel} />}
+        {view === 'standings' && <StandingsView games={games} onPick={pickTeam} />}
         {view === 'playoffs' && (
-          <Bracket games={games} tz={tz} onPick={setTeamPanel} onOpen={setDetail} />
+          <Bracket games={games} tz={tz} onPick={pickTeam} onOpen={setDetail} />
         )}
         {view === 'stats' && (
           <StatsView
             games={games}
             tz={tz}
-            onPickTeam={setTeamPanel}
+            onPickTeam={pickTeam}
             onPickPlayer={setPlayerModal}
             onOpen={setDetail}
           />
@@ -478,7 +488,7 @@ export default function App() {
             season={season}
             onSeason={setSeason}
             tz={tz}
-            onPick={setTeamPanel}
+            onPick={pickHistoryTeam}
             onPickPlayer={setPlayerModal}
             onOpen={setDetail}
           />
@@ -493,12 +503,13 @@ export default function App() {
 
       <TeamPanel
         abbr={teamPanel}
+        season={panelSeason}
         games={games}
         tz={tz}
         hideScores={hideScores}
-        onClose={() => setTeamPanel(null)}
+        onClose={() => (setTeamPanel(null), setPanelYear(null))}
         onSchedule={(t) => (setTeam(t), setView('schedule'))}
-        onOpenGame={(g) => (setTeamPanel(null), setDetail(g))}
+        onOpenGame={(g) => (setTeamPanel(null), setPanelYear(null), setDetail(g))}
         onPickPlayer={setPlayerModal}
       />
 

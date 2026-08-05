@@ -41,9 +41,9 @@ const signed = (n) => (n > 0 ? `+${n}` : String(n))
 const record = ([w, l, t]) => (t ? `${w}-${l}-${t}` : `${w}-${l}`)
 const teamRecord = (r) => record([r.w, r.l, r.t])
 
-function TeamChip({ abbr, size = 22, onPick }) {
+function TeamChip({ abbr, size = 22, onPick, year }) {
   return (
-    <button className="hy-team" onClick={() => onPick?.(abbr)}>
+    <button className="hy-team" onClick={() => onPick?.(abbr, year)}>
       <TeamLogo abbr={abbr} size={size} />
       <span>{teamName(abbr)}</span>
     </button>
@@ -55,7 +55,7 @@ function TeamChip({ abbr, size = 22, onPick }) {
 // A finished season has no clinch/elimination story left, so this is a leaner table than
 // the live Standings view rather than a reuse of it — but it keeps the seed column,
 // which is what the bracket above was built from.
-function StandingsTable({ conf, rows, onPick }) {
+function StandingsTable({ conf, rows, onPick, year }) {
   return (
     <div className="card">
       <h3 className="card-title">{CONFERENCES[conf]}</h3>
@@ -83,7 +83,7 @@ function StandingsTable({ conf, rows, onPick }) {
                   <span className="rank">{r.seed}</span>
                 </td>
                 <td className="col-team">
-                  <TeamChip abbr={r.abbr} size={24} onPick={onPick} />
+                  <TeamChip abbr={r.abbr} size={24} onPick={onPick} year={year} />
                 </td>
                 <td className="num">{r.w}</td>
                 <td className="num">{r.l}</td>
@@ -110,6 +110,9 @@ function StandingsTable({ conf, rows, onPick }) {
 // One archived season: the bracket (which carries its own champion banner) and the two
 // final conference tables it was seeded from.
 function Season({ season, tz, onPick, onOpen }) {
+  // The bracket reports a team by abbreviation alone; stamp this season onto it
+  // so the panel it opens describes the right year.
+  const pick = (abbr) => onPick?.(abbr, season.year)
   const sb = useMemo(() => superBowlSummary(season), [season])
 
   return (
@@ -124,13 +127,13 @@ function Season({ season, tz, onPick, onOpen }) {
         games={season.games}
         seeds={season.standings}
         tz={tz}
-        onPick={onPick}
+        onPick={pick}
         onOpen={onOpen}
       />
 
       <div className="conf-groups">
         {CONFERENCE_KEYS.map((c) => (
-          <StandingsTable key={c} conf={c} rows={season.standings[c]} onPick={onPick} />
+          <StandingsTable key={c} conf={c} rows={season.standings[c]} onPick={onPick} year={season.year} />
         ))}
       </div>
     </>
@@ -151,6 +154,9 @@ const ordinal = (seed) => ORDINALS[seed - 1]
 // The live view's playoff-race card has no historical meaning — clinching scenarios for a
 // season that ended years ago — so a finished season shows its notable games instead.
 function SeasonStats({ season, tz, onPickTeam, onPickPlayer, onOpen }) {
+  // Leaderboards and the margin chart report a team by abbreviation alone; stamp
+  // this season onto it so the panel they open describes the right year.
+  const pickTeam = (abbr) => onPickTeam?.(abbr, season.year)
   const t = season.totals
   const [open, setOpen] = useState(null)
   const toggle = (k) => setOpen((v) => (v === k ? null : k))
@@ -219,7 +225,7 @@ function SeasonStats({ season, tz, onPickTeam, onPickPlayer, onOpen }) {
 
       <Leaders
         getRows={getRows}
-        onPickTeam={onPickTeam}
+        onPickTeam={pickTeam}
         onPickPlayer={onPickPlayer}
         showTeam={false}
       />
@@ -230,7 +236,7 @@ function SeasonStats({ season, tz, onPickTeam, onPickPlayer, onOpen }) {
         season&apos;s.
       </p>
 
-      <MarginChart rows={rows} onPickTeam={onPickTeam} />
+      <MarginChart rows={rows} onPickTeam={pickTeam} />
     </>
   )
 }
@@ -271,18 +277,18 @@ function SuperBowls({ seasons, onPick, onSeason }) {
                     </button>
                   </td>
                   <td className="col-team">
-                    <TeamChip abbr={sb.winner} onPick={onPick} />
+                    <TeamChip abbr={sb.winner} onPick={onPick} year={season.year} />
                   </td>
                   <td className="num">{seedOf(season, sb.winner)}</td>
                   <td className="col-team">
-                    <TeamChip abbr={sb.loser} onPick={onPick} />
+                    <TeamChip abbr={sb.loser} onPick={onPick} year={season.year} />
                   </td>
                   <td className="num">{seedOf(season, sb.loser)}</td>
                   <td className="num">
                     {sb.score[0]}–{sb.score[1]}
                   </td>
                   <td className="col-team hide-sm">
-                    <TeamChip abbr={best.abbr} onPick={onPick} />
+                    <TeamChip abbr={best.abbr} onPick={onPick} year={season.year} />
                     <span className="dim"> {teamRecord(best)}</span>
                   </td>
                 </tr>

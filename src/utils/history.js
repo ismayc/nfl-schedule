@@ -96,3 +96,41 @@ export function superBowlRuns(seasons) {
   }
   return rows
 }
+
+/**
+ * One archived team's row in the shape the team panel expects.
+ *
+ * The panel is built for the live season, where every figure comes from the game
+ * list. A finished season commits its final table as numbers instead, so the
+ * same fields are rebuilt from those: per-game scoring from points for/against,
+ * and the home/road splits from their compact [w, l, t] triples.
+ *
+ * `results` is deliberately empty — the archive holds no per-game regular-season
+ * record, so there is no honest recent-form strip to draw, and the panel omits
+ * that section rather than inventing one. `remaining` is 0: the season is over.
+ */
+export function seasonTeamRow(season, abbr) {
+  if (!season || !abbr) return null
+  const row = Object.values(season.standings).flat().find((r) => r.abbr === abbr)
+  if (!row) return null
+  const gp = row.w + row.l + (row.t || 0)
+  const split = ([w, l, t]) => ({ w, l, t: t || 0 })
+  return {
+    ...row,
+    gp,
+    ppg: gp ? row.pf / gp : 0,
+    oppPpg: gp ? row.pa / gp : 0,
+    home: split(row.home),
+    road: split(row.road),
+    remaining: 0,
+    results: [],
+    // A finished season has no race left to run, so neither badge applies.
+    clinched: false,
+    eliminated: false,
+  }
+}
+
+/** That season's players, ordered for the panel's leading-scorers list. */
+export function seasonPlayers(season) {
+  return season?.players ? Object.values(season.players) : []
+}

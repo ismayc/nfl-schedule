@@ -1,13 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { HISTORY, HISTORY_BY_YEAR, HISTORY_YEARS } from '../src/data/history.js'
-import {
-  seasonBracket,
-  runResult,
-  superBowlSummary,
-  superBowlRuns,
-  bestRecord,
-  seedOf,
-} from '../src/utils/history.js'
+import { seasonBracket, runResult, superBowlSummary, superBowlRuns, bestRecord, seedOf, seasonTeamRow, seasonPlayers } from '../src/utils/history.js'
 import { CONFERENCE_KEYS, CONFERENCE_BY_ABBR } from '../src/config/league.js'
 import { TEAM_BY_ABBR } from '../src/data/teams.js'
 import { LEADER_CATEGORIES } from '../src/utils/stats.js'
@@ -269,5 +262,59 @@ describe('the season totals', () => {
       const margin = (g) => Math.abs(g.score[0] - g.score[1])
       expect(Math.max(...s.totals.closest.map(margin))).toBeLessThanOrEqual(3)
     }
+  })
+})
+
+describe('seasonTeamRow / seasonPlayers', () => {
+  const season = HISTORY[0]
+  const rows = Array.isArray(season.standings)
+    ? season.standings
+    : Object.values(season.standings).flat()
+  const target = rows[0]
+
+  it('rebuilds the panel row from a season’s committed final table', () => {
+    const row = seasonTeamRow(season, target.abbr)
+    const gp = target.w + target.l + (target.t || 0)
+    expect(row.gp).toBe(gp)
+    expect(row.ppg).toBeCloseTo(target.pf / gp)
+    expect(row.oppPpg).toBeCloseTo(target.pa / gp)
+    expect(row.home).toMatchObject({ w: target.home[0], l: target.home[1] })
+    expect(row.road).toMatchObject({ w: target.road[0], l: target.road[1] })
+    // A finished season has nothing left to play and no race to be in.
+    expect(row.remaining).toBe(0)
+    expect(row.clinched).toBe(false)
+    expect(row.eliminated).toBe(false)
+    // The archive commits no per-game regular-season record, so there is no
+    // honest recent form to draw — the panel omits that section entirely.
+    expect(row.results).toEqual([])
+  })
+
+  it('has no row without a season or a team, or for a team that season did not field', () => {
+    expect(seasonTeamRow(null, target.abbr)).toBeNull()
+    expect(seasonTeamRow(season, null)).toBeNull()
+    expect(seasonTeamRow(season, 'ZZZ')).toBeNull()
+  })
+
+  it('divides by games played only when there were any', () => {
+    // A team with no games recorded must not produce Infinity or NaN per-game
+    // figures for the panel to render.
+    const empty = { ...target, w: 0, l: 0, t: 0, pf: 0, pa: 0 }
+    // Keep whatever shape this edition's standings take (one table, or one per
+    // conference) so the lookup still finds the row.
+    const blank = {
+      ...season,
+      standings: Array.isArray(season.standings)
+        ? [empty]
+        : Object.fromEntries(Object.keys(season.standings).map((k, i) => [k, i ? [] : [empty]])),
+    }
+    const row = seasonTeamRow(blank, target.abbr)
+    expect(row.ppg).toBe(0)
+    expect(row.oppPpg).toBe(0)
+  })
+
+  it('lists a season’s players, and copes with a season that has none', () => {
+    expect(seasonPlayers(season).length).toBeGreaterThan(0)
+    expect(seasonPlayers({})).toEqual([])
+    expect(seasonPlayers(null)).toEqual([])
   })
 })

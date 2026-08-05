@@ -389,6 +389,7 @@ describe('App — team panel from the standings', () => {
 
 describe('App — the live overlay', () => {
   const GID = GAMES[0].id
+  const GID2 = GAMES[1].id
   const ev = (completed) => [
     {
       id: GID,
@@ -407,6 +408,9 @@ describe('App — the live overlay', () => {
       ],
     },
   ]
+
+  // A second committed game, so one poll can raise two moments at once.
+  const ev2 = (completed) => ev(completed).map((e) => ({ ...e, id: GID2 }))
 
   it('renders committed data even when the feed is down', async () => {
     fetch.mockRejectedValue(new Error('offline'))
@@ -503,12 +507,14 @@ describe('App — the live overlay', () => {
     })
 
     renderApp()
-    const stack = await screen.findByRole('status')
+    // The default 1s findBy window is tight for a full mount plus a three-day poll
+    // on a loaded CI runner; the whole file already allows far longer.
+    const stack = await screen.findByRole('status', {}, { timeout: 10_000 })
     expect(stack).toHaveTextContent('Kickoff')
     release()
     // The final lands on top of the kickoff still showing — the only time the
     // already-seen key set is built from a non-empty stack.
-    await waitFor(() => expect(stack).toHaveTextContent('Final'))
+    await waitFor(() => expect(stack).toHaveTextContent('Final'), { timeout: 10_000 })
     expect(stack).toHaveTextContent('Kickoff')
   })
 })

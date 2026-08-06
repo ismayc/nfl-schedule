@@ -183,6 +183,23 @@ describe('NextGame', () => {
     expect(screen.getByLabelText('time until kickoff').textContent).toBe('1h59m')
   })
 
+  // The staleness bug the per-render clock was added to fix: `now` is read on every
+  // render, not held in state, so a re-render triggered by anything else shows the
+  // real remaining time instead of one pinned to mount.
+  it('refreshes the countdown on a re-render caused by something other than its timer', () => {
+    const { rerender } = draw([game()])
+    expect(screen.getByLabelText('time until kickoff').textContent).toBe('2h0m')
+    // Wall clock moves, the banner's own 30s interval has NOT fired, and an unrelated
+    // prop change forces a render.
+    vi.setSystemTime(new Date('2026-07-19T16:45:00.000Z'))
+    rerender(
+      <FollowProvider>
+        <NextGame games={[game()]} tz="America/Chicago" />
+      </FollowProvider>
+    )
+    expect(screen.getByLabelText('time until kickoff').textContent).toBe('1h15m')
+  })
+
   it('says the season is done when nothing is live or upcoming', () => {
     // Played, postponed, and already-tipped-but-not-ticking all fail to qualify.
     draw([

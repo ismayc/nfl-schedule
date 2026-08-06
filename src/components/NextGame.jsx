@@ -6,6 +6,11 @@ import TeamLogo from './TeamLogo.jsx'
 import { livePeriod } from './GameCard.jsx'
 
 const HOUR_MS = 60 * 60 * 1000
+// How often the banner refreshes when no seconds digit is on screen, and the
+// granularity the selection memo is keyed on: `now` is read fresh on every render,
+// but the scan for live/next games only re-runs when this bucket flips, so a
+// re-render caused by something else (a filter click) doesn't re-scan the season.
+const TICK_MS = 30000
 
 function parts(ms) {
   const s = Math.max(0, Math.floor(ms / 1000))
@@ -55,7 +60,14 @@ function Side({ abbr, fallback }) {
 
 export default function NextGame({ games, tz }) {
   const { isFollowed, count } = useFollow()
-  const [now, setNow] = useState(() => Date.now())
+  const [, setTick] = useState(0)
+
+  // Read on every render rather than held in state. A banner pinned to a `now` from
+  // mount keeps counting down to a tip that has already passed until its own timer
+  // happens to fire — so a filter click would show a stale countdown for up to half
+  // a minute.
+  const now = Date.now()
+  const bucket = Math.floor(now / TICK_MS)
 
   const { mode, list, followed } = useMemo(() => {
     const involvesFollowed = (g) => isFollowed(g.home) || isFollowed(g.away)
@@ -86,16 +98,18 @@ export default function NextGame({ games, tz }) {
       list: upcoming.filter((g) => new Date(g.tip).getTime() === firstTip),
       followed: false,
     }
-  }, [games, now, isFollowed, count])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `now` is intentionally read
+  // through `bucket`, which is what bounds how often this recomputes.
+  }, [games, bucket, isFollowed, count])
 
   // Re-render once a second only while a seconds digit is actually on screen. Outside
   // the final hour a half-minute is plenty, which keeps the banner — mounted on every
   // schedule render — from putting the whole app into a 1 Hz render loop.
   const nextTip = mode === 'next' && list.length ? new Date(list[0].tip).getTime() : null
-  const period = nextTip !== null && nextTip - now < HOUR_MS ? 1000 : 30000
+  const period = nextTip !== null && nextTip - now < HOUR_MS ? 1000 : TICK_MS
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), period)
+    const id = setInterval(() => setTick((t) => t + 1), period)
     return () => clearInterval(id)
   }, [period])
 

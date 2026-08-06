@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GAMES } from './data/schedule.js'
 import { SEASON, TEAMS } from './data/teams.js'
 import { LEAGUE } from './config/league.js'
-import { detectTimezone, timezoneOptions, dayKey, todayKey } from './utils/time.js'
+import { detectTimezone, timezoneOptions, dayKey, todayKey, whenBucket } from './utils/time.js'
 import { readState, writeState, VIEWS } from './utils/urlState.js'
 import { parseQuery, matchesSearch } from './utils/search.js'
 import { watchableServices } from './utils/watch.js'
@@ -11,6 +11,7 @@ import { useFollow } from './context/follow.jsx'
 import { useServices } from './context/services.jsx'
 import ServicesModal from './components/ServicesModal.jsx'
 import ScheduleView from './components/ScheduleView.jsx'
+import NextGame from './components/NextGame.jsx'
 import StandingsView from './components/StandingsView.jsx'
 import StatsView from './components/StatsView.jsx'
 import HistoryView from './components/HistoryView.jsx'
@@ -35,6 +36,14 @@ const WATCH_KEY = `${LEAGUE.storageKey}:watchOnly`
 // something that really appears in the committed schedule.
 const SEARCH_EXAMPLES = ['team: Chiefs', 'city: Kansas City', 'venue: Arrowhead', 'tv: NBC']
 
+// The "When" quick filter. Exclusive — a game is in exactly one of these at a time —
+// so clicking the active chip clears it rather than stacking a second bucket.
+const WHEN_FILTERS = [
+  { id: 'live', label: '🔴 Live' },
+  { id: 'upcoming', label: '⏱ Upcoming' },
+  { id: 'final', label: '✓ Finished' },
+]
+
 export default function App() {
   // Read the shared link once, on mount.
   const detectedTz = useMemo(detectTimezone, [])
@@ -55,6 +64,7 @@ export default function App() {
   // is never written to the URL or localStorage, so it can't add a persisted key or
   // change any shared link (which would break the deep-link tests).
   const [search, setSearch] = useState('')
+  const [when, setWhen] = useState('')
   // "On my services": show only games carried by a service the viewer has. Remembered
   // per-device (like the followed set), not in the shared URL.
   const [watchOnly, setWatchOnly] = useState(() => {
@@ -195,11 +205,13 @@ export default function App() {
       // A game whose broadcast is unknown is kept — "not announced" isn't "can't watch".
       if (watchOnly && serviceCount && g.broadcast?.length && watchableServices(g.broadcast, services).length === 0)
         return false
+      // Empty = any time; otherwise live/upcoming/finished as the card reads right now.
+      if (when && whenBucket(g) !== when) return false
       // An empty query matches everything, so this is a no-op until something is typed.
       if (!matchesSearch(g, parsedSearch)) return false
       return true
     })
-  }, [games, team, onlyFollowed, followed, followedCount, watchOnly, services, serviceCount, parsedSearch])
+  }, [games, team, onlyFollowed, followed, followedCount, watchOnly, services, serviceCount, when, parsedSearch])
 
   // How many filters are actively narrowing the schedule — drives the toggle badge
   // and the auto-open. A followed/watch toggle only counts once there are teams/
@@ -210,14 +222,16 @@ export default function App() {
     if (team) n++
     if (onlyFollowed && followedCount) n++
     if (watchOnly && serviceCount) n++
+    if (when) n++
     return n
-  }, [search, team, onlyFollowed, followedCount, watchOnly, serviceCount])
+  }, [search, team, onlyFollowed, followedCount, watchOnly, serviceCount, when])
 
   const clearAllFilters = () => {
     setSearch('')
     setTeam('')
     setOnlyFollowed(false)
     setWatchOnly(false)
+    setWhen('')
     try {
       localStorage.setItem(WATCH_KEY, '0')
     } catch {
@@ -445,12 +459,26 @@ export default function App() {
                 ))}
                 <span className="hint-note">fields: team · city · venue · broadcast</span>
               </div>
+              <div className="phase-chips when-chips">
+                <span className="hint-label">When:</span>
+                {WHEN_FILTERS.map((w) => (
+                  <button
+                    key={w.id}
+                    className={`phase-chip${when === w.id ? ' active' : ''}`}
+                    onClick={() => setWhen((cur) => (cur === w.id ? '' : w.id))}
+                    aria-pressed={when === w.id}
+                  >
+                    {w.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
       )}
 
       <main>
+        {view === 'schedule' && <NextGame games={scheduleGames} tz={tz} />}
         {view === 'schedule' && (
           <ScheduleView
             games={scheduleGames}

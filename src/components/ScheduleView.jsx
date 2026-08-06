@@ -84,6 +84,23 @@ export default function ScheduleView({ games, tz, hideScores, showPast = false, 
   const currentWeek = weeks.find((w) => w.days.some(([k]) => k === today))?.key ?? null
 
   const [expanded, setExpanded] = useState(() => new Set([nowWeek]))
+  // Per-day folding and per-day spoiler overrides — component-local, like the
+  // sibling viewers: a folded day is a reading position, not a shareable preference.
+  const [foldedDays, setFoldedDays] = useState(() => new Set())
+  const [dayOverrides, setDayOverrides] = useState({})
+
+  const toggleDay = (key) =>
+    setFoldedDays((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  // Sticky per day and beats the global spoiler toggle, in both directions.
+  const scoresHidden = (key) => (key in dayOverrides ? dayOverrides[key] : hideScores)
+  const toggleReveal = (key) =>
+    setDayOverrides((prev) => ({ ...prev, [key]: !scoresHidden(key) }))
+
   const [pendingScroll, setPendingScroll] = useState(null)
 
   const toggleWeek = (key) =>
@@ -142,25 +159,50 @@ export default function ScheduleView({ games, tz, hideScores, showPast = false, 
     )
   }
 
-  const renderDay = ([key, dayGames]) => (
-    <div
-      className={`day ${key === today ? 'is-today' : ''}`}
-      key={key}
-      ref={(el) => (dayRefs.current[key] = el)}
-    >
-      <h3 className="day-head">
-        <span>{dayLabel(key, tz)}</span>
-        <span className="day-count">
-          {dayGames.length} game{dayGames.length === 1 ? '' : 's'}
-        </span>
-      </h3>
-      <div className="day-games">
-        {dayGames.map((g) => (
-          <GameCard key={g.id} game={g} tz={tz} hideScores={hideScores} onOpen={onOpen} />
-        ))}
+  const renderDay = ([key, dayGames]) => {
+    const folded = foldedDays.has(key)
+    const hidden = scoresHidden(key)
+    return (
+      <div
+        className={`day ${key === today ? 'is-today' : ''}`}
+        key={key}
+        id={`day-${key}`}
+        ref={(el) => (dayRefs.current[key] = el)}
+      >
+        <h3 className="day-head">
+          <button
+            className="day-fold"
+            onClick={() => toggleDay(key)}
+            aria-expanded={!folded}
+            aria-label={`${folded ? 'Show' : 'Hide'} games on ${dayLabel(key, tz)}`}
+          >
+            <span className="day-caret" aria-hidden="true">
+              {folded ? '▸' : '▾'}
+            </span>
+            <span className="day-name">{dayLabel(key, tz)}</span>
+          </button>
+          <span className="day-count">
+            {dayGames.length} game{dayGames.length === 1 ? '' : 's'}
+          </span>
+          <button
+            className="day-eye"
+            onClick={() => toggleReveal(key)}
+            aria-pressed={hidden}
+            title={hidden ? 'Show scores for this day' : 'Hide scores for this day'}
+          >
+            {hidden ? '🙈' : '👁'}
+          </button>
+        </h3>
+        {!folded && (
+          <div className="day-games">
+            {dayGames.map((g) => (
+              <GameCard key={g.id} game={g} tz={tz} hideScores={hidden} onOpen={onOpen} />
+            ))}
+          </div>
+        )}
       </div>
-    </div>
-  )
+    )
+  }
 
   // Default view: today onward as a plain flat list — short by design.
   if (!showPast) {

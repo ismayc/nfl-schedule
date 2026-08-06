@@ -738,6 +738,93 @@ select:hover,
 }
 
 /* ── Schedule ───────────────────────────────────────────────────────── */
+/* ---------- Next / Live banner ---------- */
+.nextgame {
+  background: linear-gradient(135deg, var(--bg-soft), var(--card));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+}
+.nextgame.is-live { border-color: var(--live); }
+.nextgame.done { text-align: center; color: var(--text-dim); font-weight: 600; }
+.nextgame-stack { display: flex; flex-direction: column; gap: 8px; }
+.nm-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.nm-stage {
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--accent);
+}
+.nm-teams {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  flex-wrap: wrap;
+}
+.nm-v { color: var(--text-faint); font-size: 0.85rem; font-style: italic; font-weight: 400; }
+.nm-bottom {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.nm-countdown { display: inline-flex; gap: 6px; align-items: baseline; }
+.nm-countdown b {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 3px 7px;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+.nm-countdown b small { font-size: 0.62rem; color: var(--text-faint); margin-left: 1px; }
+.nm-countdown.live { color: var(--live); font-weight: 700; }
+.nm-when { color: var(--text-dim); font-size: 0.85rem; }
+.nm-live-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.nm-live-row:hover { border-color: var(--accent); }
+.nm-live-row .nm-when { margin-left: auto; overflow-wrap: anywhere; }
+.nm-stack-bottom { margin-top: 2px; }
+.nm-jump {
+  margin-left: auto;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: none;
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
 .day {
   margin-bottom: 22px;
   /* Clear the sticky week jump-bar so a "Today"/day jump doesn't land behind it.
@@ -760,6 +847,34 @@ select:hover,
   color: var(--accent);
   border-bottom-color: var(--accent);
 }
+
+/* The day label is the fold control; the count stays put and the eye sits at the end,
+   so the header keeps the same shape it had before it became interactive. */
+.day-fold {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-right: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.day-fold:hover { color: var(--accent); }
+.day-caret { font-size: 0.8em; color: var(--text-faint); }
+.day-eye {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  font-size: 0.95em;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+}
+.day-eye:hover,
+.day-eye[aria-pressed='true'] { opacity: 1; }
 
 .day-count {
   font-size: 12px;

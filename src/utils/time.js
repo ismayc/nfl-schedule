@@ -103,3 +103,14 @@ export function countdown(iso, now = Date.now()) {
   if (h) return `${h}h ${m}m`
   return `${m}m`
 }
+
+// Which bucket the "When" quick-filter puts a game in. A game that has kicked off but
+// has no feed yet still reads as live, since that's what the viewer sees on the card.
+// 'void' is its own bucket so a postponed game never masquerades as a finished one.
+export function whenBucket(game, now = Date.now()) {
+  const state = liveState(game, now)
+  if (state === 'live' || state === 'likely-live') return 'live'
+  if (state === 'upcoming') return 'upcoming'
+  if (state === 'void') return 'void'
+  return 'final'
+}

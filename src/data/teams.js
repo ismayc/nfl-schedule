@@ -357,14 +357,14 @@ export const CONFERENCE_BY_ABBR = {
   "DET": "NFC",
   "GB": "NFC",
   "MIN": "NFC",
+  "CAR": "NFC",
   "ATL": "NFC",
   "NO": "NFC",
   "TB": "NFC",
-  "CAR": "NFC",
   "LAR": "NFC",
-  "ARI": "NFC",
   "SF": "NFC",
-  "SEA": "NFC"
+  "SEA": "NFC",
+  "ARI": "NFC"
 }
 
 export const DIVISION_BY_ABBR = {
@@ -392,12 +392,12 @@ export const DIVISION_BY_ABBR = {
   "DET": "NFC North",
   "GB": "NFC North",
   "MIN": "NFC North",
+  "CAR": "NFC South",
   "ATL": "NFC South",
   "NO": "NFC South",
   "TB": "NFC South",
-  "CAR": "NFC South",
   "LAR": "NFC West",
-  "ARI": "NFC West",
   "SF": "NFC West",
-  "SEA": "NFC West"
+  "SEA": "NFC West",
+  "ARI": "NFC West"
 }

@@ -19,7 +19,13 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ESPN_PATH = 'football/nfl'
 
 const args = process.argv.slice(2)
-const SEASON = Number(args[args.indexOf('--season') + 1]) || 2026
+// Same season-naming rule as fetch-schedule.mjs: the calendar year runs ahead of the
+// season name during the January–February playoffs.
+const defaultSeason = () => {
+  const d = new Date()
+  return d.getMonth() < 2 ? d.getFullYear() - 1 : d.getFullYear()
+}
+const SEASON = Number(args[args.indexOf('--season') + 1]) || defaultSeason()
 const QUIET = args.includes('--quiet')
 
 // Read the committed data without a bundler. The generated file is ES module source with

@@ -16,7 +16,13 @@ import { SITE, CORE, WEB, getJson, fetchTeams, broadcastNames, monthRange, banne
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ESPN_PATH = 'football/nfl'
 const args = process.argv.slice(2)
-const SEASON = Number(args[args.indexOf('--season') + 1]) || new Date().getFullYear()
+// An NFL season is named for its September: during the January–February playoffs the
+// calendar year is already one ahead, so the default rolls back until March.
+const defaultSeason = () => {
+  const d = new Date()
+  return d.getMonth() < 2 ? d.getFullYear() - 1 : d.getFullYear()
+}
+const SEASON = Number(args[args.indexOf('--season') + 1]) || defaultSeason()
 const WITH_LOGOS = !args.includes('--no-logos')
 
 // ESPN seasonType ids: 1=preseason (skipped — its weeks 1–4 collide with the regular
@@ -407,6 +413,10 @@ async function main() {
   console.log('Fetching line scores…')
   console.log(`  ${await enrichWithBoxScores(games)} games with quarter breakdowns`)
 
+  // The guard runs BEFORE anything is written: a refusal must leave every committed
+  // file untouched, not a fresh teams.js beside a stale schedule.js.
+  await guardAgainstShrink(games, 'src/data/schedule.js', 'the schedule')
+
   const teamData = teams.map(({ logo, logoDark, ...t }) => t)
 
   await writeFile(
@@ -421,8 +431,6 @@ async function main() {
       `export const CONFERENCE_BY_ABBR = ${JSON.stringify(conf, null, 2)}\n\n` +
       `export const DIVISION_BY_ABBR = ${JSON.stringify(div, null, 2)}\n`
   )
-
-  await guardAgainstShrink(games, 'src/data/schedule.js', 'the schedule')
 
   await writeFile(
     join(ROOT, 'src/data/schedule.js'),

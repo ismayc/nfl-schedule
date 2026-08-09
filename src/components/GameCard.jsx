@@ -63,7 +63,7 @@ export default function GameCard({ game, tz, hideScores, onOpen }) {
   const { services } = useServices()
   // Which of the viewer's chosen services carry this game — a 📺 icon plus a label
   // per service. Empty (no badge) until the viewer picks services.
-  const watch = watchableServices(game.broadcast, services)
+  const watch = watchableServices(game.broadcast, services, game)
   // A regionally-distributed Sunday CBS/FOX game — which one your market gets depends
   // on where you live (ESPN publishes no market data), so we flag it rather than imply
   // this exact game airs in your area.

@@ -14,9 +14,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --no-file-parallelism",
     "coverage:badge": "vitest run --coverage --no-file-parallelism && node scripts/coverage-badge.mjs",
-    "fetch:schedule": "node scripts/fetch-schedule.mjs --season 2026",
+    "fetch:schedule": "node scripts/fetch-schedule.mjs",
     "fetch:history": "node scripts/fetch-history.mjs",
-    "check:schedule": "node scripts/check-schedule.mjs --season 2026",
+    "check:schedule": "node scripts/check-schedule.mjs",
     "verify:live": "node scripts/verify-live.mjs"
   },
   "dependencies": {

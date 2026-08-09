@@ -7,7 +7,12 @@ import {
   SERVICE_BY_KEY,
 } from '../src/utils/watch.js'
 
-const labels = (b, keys) => watchableServices(b, keys).map((s) => s.label)
+const labels = (b, keys, game) => watchableServices(b, keys, game).map((s) => s.label)
+
+// A game in the regional window (Sunday 1pm ET) and one outside it (Thanksgiving,
+// a Thursday) — both CBS-only. Only the first is a Sunday Ticket game.
+const sunAfternoon = { broadcast: ['CBS'], tip: '2026-09-13T17:00:00.000Z' } // Sun 1pm ET
+const thanksgiving = { broadcast: ['CBS'], tip: '2026-11-26T17:30:00.000Z' } // Thu
 
 describe('watchableServices', () => {
   it('matches a live-TV bundle via the national networks it carries', () => {
@@ -53,9 +58,14 @@ describe('watchableServices', () => {
     expect(labels(['CBS'], ['antenna'])).toEqual(['Antenna (local TV)'])
   })
 
-  it('Sunday Ticket covers the regional CBS/FOX slate', () => {
-    expect(labels(['FOX'], ['sundayticket'])).toEqual(['NFL Sunday Ticket'])
-    expect(labels(['ESPN'], ['sundayticket'])).toEqual([])
+  it('Sunday Ticket covers ONLY the regional Sunday-afternoon CBS/FOX slate', () => {
+    // The regional window matches; the same network on Thanksgiving is one national
+    // telecast every market already gets — not a Sunday Ticket game.
+    expect(labels(['CBS'], ['sundayticket'], sunAfternoon)).toEqual(['NFL Sunday Ticket'])
+    expect(labels(['CBS'], ['sundayticket'], thanksgiving)).toEqual([])
+    expect(labels(['ESPN'], ['sundayticket'], { broadcast: ['ESPN'], tip: sunAfternoon.tip })).toEqual([])
+    // Without a game to judge the window by, no claim is made.
+    expect(labels(['FOX'], ['sundayticket'])).toEqual([])
   })
 
   it('excludes an unknown/regional feed name nothing matches', () => {

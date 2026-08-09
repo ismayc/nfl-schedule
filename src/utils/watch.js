@@ -44,7 +44,15 @@ export const SERVICE_CATALOG = [
   { key: 'espn', label: 'ESPN', kind: 'stream', match: carries('ESPN+', ESPN) },
   { key: 'netflix', label: 'Netflix', kind: 'stream', match: carries(NETFLIX) },
   { key: 'nflplus', label: 'NFL+', kind: 'stream', match: carries('NFL+', NFLNET) },
-  { key: 'sundayticket', label: 'NFL Sunday Ticket', kind: 'stream', match: carries(CBS, FOX) },
+  {
+    key: 'sundayticket',
+    label: 'NFL Sunday Ticket',
+    kind: 'stream',
+    // Sunday Ticket is the OUT-OF-MARKET package: it carries the regional
+    // Sunday-afternoon CBS/FOX slates. A national CBS/FOX telecast (Thanksgiving,
+    // Christmas) is one feed every market already gets — not a Sunday Ticket game.
+    match: (broadcast, game) => !!game && isRegional(game),
+  },
   { key: 'antenna', label: 'Antenna (local TV)', kind: 'bundle', match: carries(...LOCALS) },
   { key: 'youtubetv', label: 'YouTube TV', kind: 'bundle', match: carries(FOX, CBS, NBC, ESPN, ABC, NFLNET) },
   { key: 'hulu', label: 'Hulu + Live TV', kind: 'bundle', match: carries(FOX, CBS, NBC, ESPN, ABC, NFLNET) },
@@ -68,11 +76,12 @@ export function broadcastNotBadged(broadcast, watched) {
 // The viewer's selected services (by key) that carry this game, in catalog order.
 // Returns [] when nothing is selected or the broadcast is unknown — so a viewer who
 // hasn't chosen services sees no personalized badge (the raw network list in the
-// card meta still shows where the game is on).
-export function watchableServices(broadcast, selectedKeys) {
+// card meta still shows where the game is on). `game` feeds the matchers that need
+// more than the network list (Sunday Ticket's regional-window test).
+export function watchableServices(broadcast, selectedKeys, game) {
   if (!broadcast?.length || !selectedKeys?.length) return []
   const selected = new Set(selectedKeys)
-  return SERVICE_CATALOG.filter((s) => selected.has(s.key) && s.match(broadcast))
+  return SERVICE_CATALOG.filter((s) => selected.has(s.key) && s.match(broadcast, game))
 }
 
 // Whether a game is a REGIONAL Sunday-afternoon broadcast rather than a single
@@ -82,15 +91,18 @@ export function watchableServices(broadcast, selectedKeys) {
 // where you are. Every other window (Sun/Mon/Thu night, Prime/ESPN/ABC/NBC/Netflix/
 // NFL Net, Thanksgiving, international mornings) is one national telecast.
 const REGIONAL_NETS = new Set([CBS, FOX])
+// Hoisted: an Intl.DateTimeFormat is expensive to construct, and this now runs per
+// game inside the watch filter, not just once per rendered card.
+const REGIONAL_WINDOW_FMT = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/New_York',
+  weekday: 'short',
+  hour: '2-digit',
+  hour12: false,
+})
 export function isRegional(game) {
   const b = game.broadcast || []
   if (b.length !== 1 || !REGIONAL_NETS.has(b[0])) return false
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/New_York',
-    weekday: 'short',
-    hour: '2-digit',
-    hour12: false,
-  }).formatToParts(new Date(game.tip))
+  const parts = REGIONAL_WINDOW_FMT.formatToParts(new Date(game.tip))
   const weekday = parts.find((p) => p.type === 'weekday')?.value
   const hour = Number(parts.find((p) => p.type === 'hour')?.value) % 24
   return weekday === 'Sun' && hour >= 12 && hour < 19

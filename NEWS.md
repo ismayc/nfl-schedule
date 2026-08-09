@@ -6,6 +6,15 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-08-09
 
+- **Sunday Ticket badge is honest, refresh is safer, season self-names.** The
+  Sunday Ticket service matched every CBS/FOX game including the six national
+  telecasts (Thanksgiving, Christmas) that every market already gets — it now
+  uses the regional Sunday-afternoon window test, so only the out-of-market
+  slate badges. The refresh script's shrink guard now runs before ANY file is
+  written (a refusal used to leave a fresh teams.js beside a stale
+  schedule.js), and the season number derives from the date (rolling back in
+  Jan–Feb) instead of a hardcoded `--season 2026` that would silently fetch
+  the wrong year next season.
 - **Leaderboards actually cover the league now.** The ESPN `byathlete` feed
   with no `sort=` returns only qualified passers (~53 rows, all QBs), so every
   non-passing board in the archived seasons was garbage — rushing led by the

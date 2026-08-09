@@ -208,7 +208,7 @@ export default function App() {
       if (onlyFollowed && followedCount && !followed.has(g.home) && !followed.has(g.away)) return false
       // A no-op until services are chosen, so clearing them all can't empty the list.
       // A game whose broadcast is unknown is kept — "not announced" isn't "can't watch".
-      if (watchOnly && serviceCount && g.broadcast?.length && watchableServices(g.broadcast, services).length === 0)
+      if (watchOnly && serviceCount && g.broadcast?.length && watchableServices(g.broadcast, services, g).length === 0)
         return false
       // Empty = any time; otherwise live/upcoming/finished as the card reads right now.
       if (when && whenBucket(g) !== when) return false

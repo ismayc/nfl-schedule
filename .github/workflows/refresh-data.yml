@@ -40,7 +40,7 @@ jobs:
 
       # No deps needed to fetch — the script uses Node built-ins only.
       - name: Regenerate schedule, players, and logos
-        run: node scripts/fetch-schedule.mjs --season 2026
+        run: node scripts/fetch-schedule.mjs
 
       - name: Summarize what changed
         id: diff

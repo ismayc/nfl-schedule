@@ -4,6 +4,25 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-08-09
+
+- **Finish column and real clinch flags.** The conference standings now carry a
+  Finish column — the final seeds still arithmetically possible for each club
+  (gold single number once locked) — and the race flags are computed for real:
+  ✓ div for a clinched division title, ✓ for a banked playoff berth, ✕ for
+  arithmetic elimination (row dims), replacing the old current-8th-seed
+  approximation. The math runs on half-points (a tie is half a win) and honors
+  NFL winner precedence — a 9-8 division champion seeding above a 12-5 wild
+  card — by decomposing every bound on the division race; head-to-head ties are
+  discounted once a season series is complete and strictly won. A scenario
+  engine (`raceScenarios.js`, ported from the NBA/WNBA siblings with three-way
+  win/loss/TIE branching) additionally proves late-season wild-card clinches
+  the independent bounds miss: rivals who still play each other cannot all win
+  out. Elimination stays purely arithmetic, and a tie owned by the multi-club
+  tiebreakers (like a three-way division tie at 8-9) is honestly left unflagged.
+  Verified against the completed 2025 season: every decided seed locks, all 14
+  field/eliminated calls match, and the tiebreaker-owned NFC South stays open.
+
 ## 2026-08-08
 
 - **Official NFL tie-breaking procedures.** Standings and seeding now implement

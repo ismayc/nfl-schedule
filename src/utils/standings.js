@@ -11,6 +11,7 @@
 //      yields a plausible, wrong bracket (PLAYBOOK §4).
 import { TEAMS, TEAM_BY_ABBR, CONFERENCE_BY_ABBR, DIVISION_BY_ABBR } from '../data/teams.js'
 import { PLAYOFF, DIVISION_ORDER, CONFERENCE_KEYS } from '../config/league.js'
+import { scenarioClinched } from './raceScenarios.js'
 
 export const DIVISIONS = CONFERENCE_KEYS.flatMap((c) => DIVISION_ORDER.map((d) => `${c} ${d}`))
 
@@ -479,36 +480,255 @@ export function conferenceSeeds(games) {
 export function scheduledGames(games) {
   const total = {}
   for (const g of games) {
-    if (g.seasonType !== 'regular' || g.canceled) continue
+    // Postponed shells are excluded like canceled ones — a postponed game is neither
+    // played nor playable until its rescheduled row appears, and the race math below
+    // needs totals that agree with what the remaining schedule can actually deliver
+    // (same predicate the WNBA/NBA siblings use).
+    if (g.seasonType !== 'regular' || g.canceled || g.postponed) continue
     total[g.home] = (total[g.home] || 0) + 1
     total[g.away] = (total[g.away] || 0) + 1
   }
   return total
 }
 
-// A best-effort playoff picture per conference. Clinch/elimination for the NFL is a
-// notoriously hairy calculation (division winners are IN regardless of a wild card's
-// record); this uses the simple bound — a team clinches a top-7 spot when even losing
-// out keeps it ahead of the current 8th seed's best case, and is eliminated when winning
-// out can't reach the 7th seed. Labelled approximate, and only meaningful once games are
-// played (the committed 2026 snapshot is empty until September).
-export function playoffPicture(games) {
-  const seeds = conferenceSeeds(games)
+// ── The playoff race: seed ranges and clinch flags ─────────────────────────────
+// Everything below runs on HALF-POINTS (win = 2, tie = 1): the NFL orders by
+// pct = (w + t/2) / gp, and with every club scheduled for the same 17-game slate the
+// final pct order IS the final half-point order — while half-points stay integral
+// through a tie, which a raw win count would miscount. Floor = lose out, ceiling =
+// win out; a rival can finish ahead only if its ceiling reaches your floor. Ties on
+// the bound are charged AGAINST the team for the worst rank and FOR it for the best,
+// so every range is sound regardless of how tiebreakers fall — conservative, never
+// wrong. bestRank === worstRank therefore means the seed is truly locked.
+
+const hpOf = (r) => 2 * r.w + r.t
+
+// floor/ceiling half-point bounds for a pool of rows.
+function hpBounds(rows, totals) {
+  const bounds = new Map()
+  for (const r of rows) {
+    const floor = hpOf(r)
+    bounds.set(r.abbr, { floor, ceiling: floor + 2 * ((totals[r.abbr] ?? 0) - r.gp) })
+  }
+  return bounds
+}
+
+// Season series ledger for every pair that has met or will meet: half-points each way
+// (a tied meeting is one each) plus how many scheduled meetings are still unplayed.
+// Keyed "A|B" with the abbrs sorted, so either club can look the pair up.
+function seriesLedger(games) {
+  const ledger = new Map()
+  for (const g of games) {
+    if (g.seasonType !== 'regular' || g.postponed || g.canceled) continue
+    const key = [g.home, g.away].sort().join('|')
+    let e = ledger.get(key)
+    if (!e) ledger.set(key, (e = { hp: {}, remaining: 0 }))
+    if (!g.score) e.remaining++
+    else {
+      const [hs, as] = g.score
+      if (hs === as) {
+        e.hp[g.home] = (e.hp[g.home] ?? 0) + 1
+        e.hp[g.away] = (e.hp[g.away] ?? 0) + 1
+      } else {
+        const w = hs > as ? g.home : g.away
+        e.hp[w] = (e.hp[w] ?? 0) + 2
+      }
+    }
+  }
+  return ledger
+}
+
+// One refinement over pure arithmetic, borrowed from the WNBA/NBA siblings: a rival
+// who can only TIE the team's floor (never strictly pass it) stops counting once the
+// pair's season series is complete and strictly won — head-to-head is step 1 of the
+// two-club chain in BOTH the division and wild-card procedures, so a banked series
+// settles a two-club tie immutably. (A multi-way tie could still reorder through the
+// one-club-per-division and sweep steps — the exotic case this refinement accepts.)
+function banked(ledger, mine, theirs) {
+  const e = ledger.get([mine, theirs].sort().join('|'))
+  return !!e && e.remaining === 0 && (e.hp[mine] ?? 0) > (e.hp[theirs] ?? 0)
+}
+
+// Could rival `r` still finish at-or-above `b` on record? Strict pass, or a tie the
+// team has not banked.
+function couldPassOrTie(r, b, bounds, ledger) {
+  const rb = bounds.get(r.abbr)
+  const bb = bounds.get(b.abbr)
+  if (rb.ceiling > bb.floor) return true
+  return rb.ceiling === bb.floor && !banked(ledger, b.abbr, r.abbr)
+}
+
+// The window of final DIVISION ranks (1–4) still arithmetically open to each club.
+// bestRank === 1 means the club can still win its division; worstRank === 1 means the
+// title is arithmetically clinched. bestRank stays purely arithmetic (ties count for
+// the club), so a rank denied here is denied without any tiebreaker assumption.
+export function divisionRanges(games, table = computeStandings(games)) {
   const totals = scheduledGames(games)
+  const ledger = seriesLedger(games)
+  const out = {}
+  for (const div of DIVISIONS) {
+    const rows = Object.values(table).filter((r) => r.division === div)
+    const bounds = hpBounds(rows, totals)
+    for (const b of rows) {
+      const bb = bounds.get(b.abbr)
+      let ahead = 0
+      let couldPass = 0
+      for (const r of rows) {
+        if (r.abbr === b.abbr) continue
+        if (bounds.get(r.abbr).floor > bb.ceiling) ahead++
+        if (couldPassOrTie(r, b, bounds, ledger)) couldPass++
+      }
+      out[b.abbr] = { bestRank: 1 + ahead, worstRank: 1 + couldPass }
+    }
+  }
+  return out
+}
+
+// The window of final CONFERENCE seeds (1–16) still arithmetically open to each club.
+// The flat-pool bound the WNBA/NBA siblings use would be WRONG here: a 9-8 division
+// winner outranks a 12-5 wild card, so seeding is not "top N by record". Instead the
+// bound decomposes on the division race:
+//   - A club that can still win its division can reach the winner seeds (1–4); only
+//     the OTHER divisions' guaranteed winners can be ahead of it there (a division's
+//     winner always finishes at or above every floor in that division).
+//   - A club that cannot win its division starts behind all four winners, plus every
+//     rival guaranteed ahead of it on record (with guaranteed non-winners counted
+//     separately — they cannot double as one of the four).
+//   - For the worst seed, a rival threatens either on record or by winning its
+//     division with a worse one — but only rivals that can still do BOTH (win the
+//     division and reach the club's floor) carry a division's threat.
+export function seedRanges(games, table = computeStandings(games)) {
+  const totals = scheduledGames(games)
+  const ledger = seriesLedger(games)
+  const divR = divisionRanges(games, table)
   const out = {}
   for (const conf of CONFERENCE_KEYS) {
-    const rows = seeds[conf]
-    const cut = rows[PLAYOFF.seedsPerConference - 1] // 7th seed
-    const firstOut = rows[PLAYOFF.seedsPerConference] // 8th seed
+    const rows = Object.values(table).filter((r) => r.conference === conf)
+    const bounds = hpBounds(rows, totals)
+    const divisions = DIVISION_ORDER.map((d) => `${conf} ${d}`)
+    for (const b of rows) {
+      const bb = bounds.get(b.abbr)
+      const others = divisions.filter((d) => d !== b.division)
+
+      let bestRank
+      if (divR[b.abbr].bestRank === 1) {
+        // Best case: win the division. Ahead of a division winner sit only the other
+        // divisions' winners — and a division guarantees one strictly ahead exactly
+        // when even its lowest possible winner (its best floor) beats our ceiling.
+        let ahead = 0
+        for (const d of others) {
+          const maxFloor = Math.max(
+            ...rows.filter((r) => r.division === d).map((r) => bounds.get(r.abbr).floor)
+          )
+          if (maxFloor > bb.ceiling) ahead++
+        }
+        bestRank = 1 + ahead
+      } else {
+        // Never a division winner: all four winners are ahead, and so is every rival
+        // guaranteed ahead on record. Guaranteed non-winners among those cannot be
+        // one of the four, so they stack on top; the rest may overlap the winners,
+        // so only the larger of the two counts is safe to claim.
+        let aheadOnRecord = 0
+        let aheadNonWinners = 0
+        for (const r of rows) {
+          if (r.abbr === b.abbr || bounds.get(r.abbr).floor <= bb.ceiling) continue
+          aheadOnRecord++
+          if (divR[r.abbr].bestRank > 1) aheadNonWinners++
+        }
+        bestRank =
+          1 + Math.max(PLAYOFF.divisionWinnerSeeds + aheadNonWinners, aheadOnRecord)
+      }
+
+      let worstRank
+      if (divR[b.abbr].worstRank === 1) {
+        // Division title in hand: only the other divisions' winners can pass. A
+        // division threatens exactly when some club in it could still both win it
+        // and finish at-or-above us.
+        let threats = 0
+        for (const d of others) {
+          const threat = rows.some(
+            (r) =>
+              r.division === d &&
+              divR[r.abbr].bestRank === 1 &&
+              couldPassOrTie(r, b, bounds, ledger)
+          )
+          if (threat) threats++
+        }
+        worstRank = 1 + threats
+      } else {
+        // A rival can finish ahead on record, or by winning its division with a
+        // worse one; a rival that can do neither never can.
+        let could = 0
+        for (const r of rows) {
+          if (r.abbr === b.abbr) continue
+          if (divR[r.abbr].bestRank === 1 || couldPassOrTie(r, b, bounds, ledger)) could++
+        }
+        worstRank = 1 + could
+      }
+
+      out[b.abbr] = { bestRank, worstRank }
+    }
+  }
+  return out
+}
+
+// The playoff picture per conference, in seed order, with the race state each row:
+//   bestRank / worstRank — the conference seeds still arithmetically possible;
+//   clinchedDivision — the division title is secured;
+//   clinched — a playoff berth is secured (division title or a wild card);
+//   eliminated — the berth is arithmetically out of reach.
+// Elimination stays purely arithmetic. The clinch side is upgraded twice: banked
+// head-to-head ties are discounted in the ranges, and — once the coupled late-season
+// schedule is enumerable — the exact scenario engine runs, which also sees that
+// chasers who still play each other can't all win out.
+//
+// worstRank ≤ 7 soundly implies a berth despite winner precedence: the range counts
+// every rival that could EVER finish ahead, and in any final table where the team
+// misses as a non-winner, all four division winners plus three wild cards sit above
+// it — eight rivals, more than a worstRank of 7 admits. The wild-card check asks the
+// sharper question directly: could three rivals that are not guaranteed division
+// winners (only those can consume the three wild-card slots) finish at-or-above us?
+export function playoffPicture(games) {
+  const table = computeStandings(games)
+  const totals = scheduledGames(games)
+  const ledger = seriesLedger(games)
+  const divR = divisionRanges(games, table)
+  const ranges = seedRanges(games, table)
+  const out = {}
+  for (const conf of CONFERENCE_KEYS) {
+    const rows = seedConference(conf, games, table)
+    const confRows = Object.values(table).filter((r) => r.conference === conf)
+    const bounds = hpBounds(confRows, totals)
     out[conf] = rows.map((row) => {
       const remaining = (totals[row.abbr] ?? 0) - row.gp
-      const bestCasePoints = row.w + remaining // treat wins-only; ties are rare
+      const { bestRank, worstRank } = ranges[row.abbr]
+      const eliminated = bestRank > PLAYOFF.seedsPerConference
+      // The division title needs no scenario pass: at a cut of ONE, every chaser can
+      // reach its full ceiling in some outcome (coupling only bites when several
+      // rivals must all fail at once), and lone tie-threats are already discounted
+      // through the banked series — so the arithmetic bound is exact here.
+      const clinchedDivision = divR[row.abbr].worstRank === 1
+      // Wild-card blockers: conference rivals not guaranteed to win their division —
+      // only those can occupy one of the three wild-card slots ahead of us.
+      const blockerRows = confRows.filter(
+        (r) => r.abbr === row.abbr || divR[r.abbr].worstRank > 1
+      )
+      const blockers = blockerRows.filter(
+        (r) => r.abbr !== row.abbr && couldPassOrTie(r, row, bounds, ledger)
+      ).length
       const clinched =
-        firstOut && row.gp > 0
-          ? row.w > firstOut.w + ((totals[firstOut.abbr] ?? 0) - firstOut.gp)
-          : false
-      const eliminated = cut && row.gp > 0 ? bestCasePoints < cut.w : false
-      return { ...row, remaining, clinched, eliminated }
+        clinchedDivision ||
+        worstRank <= PLAYOFF.seedsPerConference ||
+        blockers < PLAYOFF.seedsPerConference - PLAYOFF.divisionWinnerSeeds ||
+        (!eliminated &&
+          scenarioClinched(
+            row.abbr,
+            blockerRows,
+            totals,
+            games,
+            PLAYOFF.seedsPerConference - PLAYOFF.divisionWinnerSeeds
+          ) === true)
+      return { ...row, remaining, bestRank, worstRank, clinched, clinchedDivision, eliminated }
     })
   }
   return out

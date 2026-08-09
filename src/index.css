@@ -783,6 +783,17 @@ select:hover,
   color: var(--loss);
 }
 
+/* Finish column — the seed range still arithmetically open; gold once locked. */
+.finish {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.finish-locked {
+  color: var(--gold);
+  font-weight: 700;
+}
+
 .streak {
   font-weight: 700;
   font-size: 12.5px;

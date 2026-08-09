@@ -1,5 +1,5 @@
 import { Fragment, useMemo, useState } from 'react'
-import { divisionStandings, conferenceSeeds } from '../utils/standings.js'
+import { divisionStandings, playoffPicture } from '../utils/standings.js'
 import { CONFERENCES, CONFERENCE_KEYS, DIVISION_ORDER, PLAYOFF } from '../config/league.js'
 import { useFollow } from '../context/follow.jsx'
 import TeamLogo from './TeamLogo.jsx'
@@ -24,12 +24,52 @@ function StreakPill({ streak }) {
   )
 }
 
-function Row({ row, rank, onPick }) {
+// The race states are mutually exclusive, strongest claim first: a clinched division
+// title beats the bare berth ✓ (and subsumes the ♛ leader mark), and ✕ marks a team
+// whose berth is arithmetically out of reach.
+function RaceBadge({ row }) {
+  if (row.clinchedDivision) {
+    return (
+      <span className="badge badge-in" title="Clinched the division title — a top-4 seed and a home playoff game">
+        ✓ div
+      </span>
+    )
+  }
+  if (row.clinched) {
+    return (
+      <span className="badge badge-in" title="Clinched a playoff berth">
+        ✓
+      </span>
+    )
+  }
+  if (row.eliminated) {
+    return (
+      <span className="badge badge-out" title="Eliminated — can no longer reach a playoff berth">
+        ✕
+      </span>
+    )
+  }
+  return null
+}
+
+// "3–7" while outcomes remain open; collapses to the bare seed once locked.
+function FinishRange({ row }) {
+  if (row.bestRank === row.worstRank) {
+    return <span className="finish finish-locked">{row.bestRank}</span>
+  }
+  return (
+    <span className="finish">
+      {row.bestRank}–{row.worstRank}
+    </span>
+  )
+}
+
+function Row({ row, rank, onPick, showFinish }) {
   const { isFollowed, toggle } = useFollow()
   const followed = isFollowed(row.abbr)
 
   return (
-    <tr className={followed ? 'row-followed' : ''}>
+    <tr className={`${followed ? 'row-followed' : ''} ${row.eliminated ? 'row-elim' : ''}`}>
       <td className="col-rank">
         {/* Separate <td> from the team button below — a <button> may not nest a <button>. */}
         <button
@@ -49,11 +89,12 @@ function Row({ row, rank, onPick }) {
             <span className="team-loc">{row.team.location}</span>{' '}
             <span className="team-nick">{row.team.name}</span>
           </span>
-          {row.isDivisionWinner && (
+          {row.isDivisionWinner && !row.clinchedDivision && (
             <span className="badge badge-in" title="Division leader — seeds 1–4 host a playoff game">
               ♛
             </span>
           )}
+          <RaceBadge row={row} />
         </button>
       </td>
       <td className="num">{row.w}</td>
@@ -69,14 +110,22 @@ function Row({ row, rank, onPick }) {
       <td className="num">
         <StreakPill streak={row.streak} />
       </td>
+      {showFinish && (
+        <td className="num">
+          <FinishRange row={row} />
+        </td>
+      )}
     </tr>
   )
 }
 
-// 13 body columns — kept in sync with the colSpan on the cutline row.
+// 13 body columns — kept in sync with the colSpan on the cutline row. The conference
+// table adds the Finish column (a seed range only means something in the seeded pool).
 const COLS = 13
 
-function Table({ caption, rows, rankKey, onPick, cutAfter, cutLabel }) {
+function Table({ caption, rows, rankKey, onPick, cutAfter, cutLabel, showFinish }) {
+  // Evaluated for every table (not just the one with a cutline) so both arms are live.
+  const totalCols = showFinish ? COLS + 1 : COLS
   return (
     <div className="card">
       <h3 className="card-title">{caption}</h3>
@@ -97,15 +146,23 @@ function Table({ caption, rows, rankKey, onPick, cutAfter, cutLabel }) {
               <th className="num hide-sm">Road</th>
               <th className="num hide-sm" title="Record vs own division">Div</th>
               <th className="num">Strk</th>
+              {showFinish && (
+                <th
+                  className="num"
+                  title="Final seeds still arithmetically possible (half-point bounds; a secured tiebreaker can only narrow this sooner)"
+                >
+                  Finish
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
             {rows.map((row, i) => (
               <Fragment key={row.abbr}>
-                <Row row={row} rank={row[rankKey]} onPick={onPick} />
+                <Row row={row} rank={row[rankKey]} onPick={onPick} showFinish={showFinish} />
                 {cutAfter === i + 1 && (
                   <tr className="cutline">
-                    <td colSpan={COLS}>
+                    <td colSpan={totalCols}>
                       <span>{cutLabel}</span>
                     </td>
                   </tr>
@@ -121,8 +178,26 @@ function Table({ caption, rows, rankKey, onPick, cutAfter, cutLabel }) {
 
 export default function StandingsView({ games, onPick }) {
   const [mode, setMode] = useState('division')
-  const byDivision = useMemo(() => divisionStandings(games), [games])
-  const byConference = useMemo(() => conferenceSeeds(games), [games])
+  // playoffPicture rows carry the race state (clinch flags, Finish ranges) on top of
+  // the seeded conference order; the division tables borrow the flags by abbr so the
+  // badges read the same in both modes.
+  const byConference = useMemo(() => playoffPicture(games), [games])
+  const byDivision = useMemo(() => {
+    const race = {}
+    for (const conf of CONFERENCE_KEYS) {
+      for (const r of byConference[conf]) {
+        race[r.abbr] = {
+          clinched: r.clinched,
+          clinchedDivision: r.clinchedDivision,
+          eliminated: r.eliminated,
+        }
+      }
+    }
+    const divs = divisionStandings(games)
+    return Object.fromEntries(
+      Object.entries(divs).map(([div, rows]) => [div, rows.map((r) => ({ ...r, ...race[r.abbr] }))])
+    )
+  }, [games, byConference])
 
   // Every team 0-0-0 until Week 1 — say so rather than showing eight tables of zeros
   // with no context.
@@ -189,6 +264,7 @@ export default function StandingsView({ games, onPick }) {
               onPick={onPick}
               cutAfter={PLAYOFF.seedsPerConference}
               cutLabel={cutLabel}
+              showFinish
             />
           ))}
         </div>
@@ -200,7 +276,22 @@ export default function StandingsView({ games, onPick }) {
           seed and a home playoff game
         </span>
         <span className="legend-item">
+          <span className="badge badge-in">✓ div</span> clinched the division title
+        </span>
+        <span className="legend-item">
+          <span className="badge badge-in">✓</span> clinched a playoff berth — a top-7 finish is
+          guaranteed
+        </span>
+        <span className="legend-item">
+          <span className="badge badge-out">✕</span> eliminated — can no longer reach a playoff
+          berth (row dims)
+        </span>
+        <span className="legend-item">
           <span className="legend-star">★</span> a team you follow
+        </span>
+        <span className="legend-item">
+          <span className="finish">Finish 3–7</span> — the final seeds still arithmetically
+          possible (conference view); a single number means the seed is locked
         </span>
       </p>
     </section>

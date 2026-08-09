@@ -29,18 +29,34 @@ describe('StandingsView — populated (2025 season)', () => {
     expect(screen.queryByText(/Standings begin in Week 1/)).not.toBeInTheDocument()
   })
 
-  it('marks the division winner with the crown badge', () => {
+  it('marks a clinched division title with ✓ div, and a merely-leading winner with the crown', () => {
     const { container } = renderView({ games: GAMES_2025 })
-    // Scoped to the tables — the legend below them shows a decorative sample crown.
-    expect(container.querySelector('.standings .badge-in')).toBeInTheDocument()
-    expect(container.querySelector('.standings .badge-in').textContent).toContain('♛')
+    // Scoped to the tables — the legend below them shows decorative sample badges.
+    const badges = [...container.querySelectorAll('.standings .badge-in')].map((n) => n.textContent)
+    // Most 2025 division titles are banked outright → ✓ div (which subsumes the crown)…
+    expect(badges).toContain('✓ div')
+    // …but the NFC South ended in a genuine three-way tie (CAR/TB/ATL all 8-9), which
+    // the arithmetic bounds refuse to call — CAR is the winner yet shows only ♛.
+    expect(badges).toContain('♛')
   })
 
-  it('explains the crown badge in a visible legend (tooltips are hover-only)', () => {
+  it('marks a clinched berth with ✓ and an eliminated team with ✕ (dimmed row)', () => {
+    const { container } = renderView({ games: GAMES_2025 })
+    const badges = [...container.querySelectorAll('.standings .badge-in')].map((n) => n.textContent)
+    expect(badges).toContain('✓') // a wild card that banked its berth (e.g. HOU)
+    expect(container.querySelector('.standings .badge-out')).toBeInTheDocument()
+    expect(container.querySelector('tr.row-elim')).toBeInTheDocument()
+  })
+
+  it('explains every badge in a visible legend (tooltips are hover-only)', () => {
     const { container } = renderView({ games: GAMES_2025 })
     const legend = container.querySelector('.legend')
     expect(legend).toHaveTextContent(/♛ leading the division/)
+    expect(legend).toHaveTextContent(/✓ div clinched the division title/)
+    expect(legend).toHaveTextContent(/✓ clinched a playoff berth/)
+    expect(legend).toHaveTextContent(/✕ eliminated/)
     expect(legend).toHaveTextContent(/★ a team you follow/)
+    expect(legend).toHaveTextContent(/final seeds still arithmetically possible/)
   })
 
   it('renders the T column and a tie in a record (Green Bay)', () => {
@@ -110,6 +126,24 @@ describe('StandingsView — conference mode', () => {
     const cutIndex = bodyRows.findIndex((r) => r.classList.contains('cutline'))
     // 7 team rows precede the cutline row.
     expect(cutIndex).toBe(7)
+  })
+
+  it('shows the Finish column only in conference mode, with locked and open ranges', async () => {
+    const { container } = renderView({ games: GAMES_2025, onPick: () => {} })
+    // Division mode: no Finish header, no finish cells.
+    expect([...container.querySelectorAll('thead th')].map((n) => n.textContent)).not.toContain(
+      'Finish'
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'By conference' }))
+    const headers = [...container.querySelectorAll('thead th')].map((n) => n.textContent)
+    expect(headers).toContain('Finish')
+    // The completed season locks most seeds (gold single number)…
+    expect(container.querySelector('.finish-locked')).toBeInTheDocument()
+    // …while tiebreaker-owned seeds stay a range (DEN/NE both 14-3 → "1–2").
+    const ranges = [...container.querySelectorAll('.finish')].map((n) => n.textContent)
+    expect(ranges).toContain('1–2')
+    // The cutline spans the widened table (13 base columns + Finish).
+    expect(container.querySelector('.cutline td').getAttribute('colspan')).toBe('14')
   })
 
   it('can toggle back to division mode', async () => {

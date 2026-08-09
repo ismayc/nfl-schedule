@@ -5,6 +5,8 @@ import {
   countsForStandings,
   compareTeams,
   divisionStandings,
+  divisionRanges,
+  seedRanges,
   conferenceSeeds,
   headToHead,
   scheduledGames,
@@ -975,11 +977,12 @@ describe('scheduledGames', () => {
     expect(total.DEN).toBe(2)
   })
 
-  it('ignores the postseason and canceled games', () => {
+  it('ignores the postseason, canceled and postponed games', () => {
     const total = scheduledGames([
       game({ home: 'KC', away: 'DEN' }),
       game({ home: 'KC', away: 'DEN', seasonType: 'postseason' }),
       game({ home: 'KC', away: 'DEN', canceled: true }),
+      game({ home: 'KC', away: 'DEN', postponed: true }),
     ])
     expect(total.KC).toBe(1)
     expect(total.DEN).toBe(1)
@@ -1036,5 +1039,181 @@ describe('playoffPicture', () => {
     // The two teams that did play show one fewer remaining than scheduled (0).
     const kc = picture.AFC.find((r) => r.abbr === 'KC')
     expect(kc.remaining).toBe(0)
+  })
+})
+
+// ── The playoff race: ranges and clinch flags ──────────────────────────────────
+// The 2025 truth fixture pins the range math against a real season whose edges are
+// known: identical 14-3 records at the top of the AFC, a genuine three-way NFC
+// South tie at 8-9, a tie game (GB), and banked head-to-head series either way.
+describe('divisionRanges', () => {
+  const ranges = divisionRanges(GAMES_2025)
+
+  it('locks every rank in a division the season decided outright (AFC East)', () => {
+    expect(ranges.NE).toEqual({ bestRank: 1, worstRank: 1 })
+    expect(ranges.BUF).toEqual({ bestRank: 2, worstRank: 2 })
+    expect(ranges.MIA).toEqual({ bestRank: 3, worstRank: 3 })
+    expect(ranges.NYJ).toEqual({ bestRank: 4, worstRank: 4 })
+  })
+
+  it('keeps the three-way NFC South tie honest: ranks 1-3 stay open, banked series narrow', () => {
+    // CAR, TB and ATL all finished 8-9 — the title belongs to the tiebreakers, so
+    // none of the three is "clinched" or "denied" arithmetically. CAR strictly won
+    // one season series (banked head-to-head), which trims its worst case to 2.
+    expect(ranges.CAR).toEqual({ bestRank: 1, worstRank: 2 })
+    expect(ranges.TB).toEqual({ bestRank: 1, worstRank: 3 })
+    expect(ranges.ATL).toEqual({ bestRank: 1, worstRank: 3 })
+    expect(ranges.NO).toEqual({ bestRank: 4, worstRank: 4 })
+  })
+
+  it('a live season series never banks a tie, a finished one does', () => {
+    // BUF leads MIA 1-0 with the rematch still scheduled: MIA can only TIE BUF's
+    // floor, but the pair's series is open, so the tie still counts against BUF.
+    const open = [sg('BUF', 'MIA', 24, 20), { id: 'syn-open', seasonType: 'regular', tip: '2026-12-27T18:00:00.000Z', home: 'MIA', away: 'BUF' }]
+    expect(divisionRanges(open).BUF.worstRank).toBe(2)
+    // Rematch played and won: the series is banked and the tie threat is discounted.
+    const done = [sg('BUF', 'MIA', 24, 20), sg('MIA', 'BUF', 20, 24)]
+    expect(divisionRanges(done).BUF.worstRank).toBe(1)
+  })
+})
+
+describe('seedRanges', () => {
+  const ranges = seedRanges(GAMES_2025)
+
+  it('locks the seeds the season truly decided', () => {
+    expect(ranges.SEA).toEqual({ bestRank: 1, worstRank: 1 }) // NFC 1 outright
+    expect(ranges.JAX).toEqual({ bestRank: 3, worstRank: 3 })
+    expect(ranges.PIT).toEqual({ bestRank: 4, worstRank: 4 }) // a 10-7 winner ABOVE 12-5 wild cards
+    expect(ranges.HOU).toEqual({ bestRank: 5, worstRank: 5 }) // banked h2h over 12-5 BUF
+    expect(ranges.LAC).toEqual({ bestRank: 7, worstRank: 7 })
+  })
+
+  it('leaves tiebreaker-owned seeds as ranges (DEN/NE both 14-3)', () => {
+    expect(ranges.DEN).toEqual({ bestRank: 1, worstRank: 2 })
+    expect(ranges.NE).toEqual({ bestRank: 1, worstRank: 2 })
+  })
+
+  it('honors winner precedence in both directions', () => {
+    // CAR (8-9) can be seed 4 as NFC South champion — or as low as 11 if the
+    // tiebreakers hand the division to TB or ATL.
+    expect(ranges.CAR).toEqual({ bestRank: 4, worstRank: 11 })
+    // GB (9-7-1, half-points!) locked into the field but not a division seed.
+    expect(ranges.GB).toEqual({ bestRank: 7, worstRank: 9 })
+  })
+})
+
+describe('playoffPicture — race flags', () => {
+  const picture = playoffPicture(GAMES_2025)
+
+  it('clinches the entire decided AFC field and eliminates the rest', () => {
+    expect(picture.AFC.slice(0, 7).every((r) => r.clinched)).toBe(true)
+    expect(picture.AFC.slice(7).every((r) => r.eliminated)).toBe(true)
+  })
+
+  it('refuses to call the tiebreaker-owned NFC South, in both directions', () => {
+    // CAR made the field as division winner, but only via a three-way tiebreak the
+    // arithmetic bounds do not assume — no ✓; and TB/ATL, who missed, are not ✕.
+    const car = picture.NFC.find((r) => r.abbr === 'CAR')
+    expect(car.inField).toBe(true)
+    expect(car.clinched).toBe(false)
+    expect(car.clinchedDivision).toBe(false)
+    expect(car.eliminated).toBe(false)
+    for (const abbr of ['TB', 'ATL']) {
+      const r = picture.NFC.find((x) => x.abbr === abbr)
+      expect(r.inField).toBe(false)
+      expect(r.eliminated).toBe(false)
+    }
+    // Teams beaten on pure arithmetic ARE out (MIN and DET at 9-8 behind GB's 19 hp).
+    expect(picture.NFC.find((r) => r.abbr === 'MIN').eliminated).toBe(true)
+    expect(picture.NFC.find((r) => r.abbr === 'DET').eliminated).toBe(true)
+  })
+
+  it('marks clinched division titles (✓ div) only where the title is banked', () => {
+    expect(picture.AFC.find((r) => r.abbr === 'NE').clinchedDivision).toBe(true)
+    expect(picture.NFC.find((r) => r.abbr === 'SEA').clinchedDivision).toBe(true)
+    expect(picture.NFC.find((r) => r.abbr === 'CAR').clinchedDivision).toBe(false)
+  })
+})
+
+// Synthetic mid-season conferences for the two clinch paths the 2025 season cannot
+// reach: the wild-card blocker count and the coupled-schedule scenario check. AFC
+// records are built from cross-conference games so intra-AFC ledgers stay clean;
+// each AFC club's remaining slate is exactly the unscored games listed.
+describe('playoffPicture — wild-card clinch paths', () => {
+  const NFC_OPPS = ['DAL', 'NYG', 'PHI', 'WSH', 'CHI', 'DET', 'GB', 'MIN']
+  const unscored = (home, away) => ({
+    id: `syn-${synId++}`,
+    seasonType: 'regular',
+    tip: '2026-12-27T18:00:00.000Z',
+    home,
+    away,
+  })
+  // n cross-conference results for `abbr` (w wins then losses), then u unscored.
+  const slate = (abbr, w, l, u, games) => {
+    let i = 0
+    for (let k = 0; k < w; k++) games.push(sg(abbr, NFC_OPPS[i++ % 8], 24, 10))
+    for (let k = 0; k < l; k++) games.push(sg(abbr, NFC_OPPS[i++ % 8], 10, 24))
+    for (let k = 0; k < u; k++) games.push(unscored(abbr, NFC_OPPS[i++ % 8]))
+  }
+
+  it('clinches via the blocker count when at most two eligible rivals can ever pass', () => {
+    // BUF 6-0 with MIA 5-1 close behind (division open → no ✓ div, and MIA is one
+    // blocker), while every other AFC club sits 3-3 in wide-open divisions: each of
+    // them could still win its division (worstRank balloons past 7) but none can
+    // reach BUF's floor — so at most ONE non-winner can finish ahead. Berth banked.
+    const games = []
+    slate('BUF', 6, 0, 2, games)
+    slate('MIA', 5, 1, 2, games)
+    for (const abbr of ['NE', 'NYJ', 'BAL', 'CIN', 'CLE', 'PIT', 'HOU', 'IND', 'JAX', 'TEN', 'DEN', 'KC', 'LAC', 'LV'])
+      slate(abbr, 3, 3, 2, games)
+    const buf = playoffPicture(games).AFC.find((r) => r.abbr === 'BUF')
+    expect(buf.clinchedDivision).toBe(false)
+    expect(buf.worstRank).toBeGreaterThan(7)
+    expect(buf.clinched).toBe(true)
+    expect(buf.eliminated).toBe(false)
+  })
+
+  it('clinches via the scenario engine when the blockers still play each other', () => {
+    // BUF 6-0 (floor 12 half-points). Three tie-only blockers at 4-2: MIA's two
+    // remaining games are uncoupled, but CIN and CLE finish with a home-and-home
+    // against EACH OTHER — they cannot both win out, so no outcome ever parks three
+    // rivals on the floor. The static count (3 blockers) can't see it; the coupled
+    // enumeration can.
+    const games = []
+    slate('BUF', 6, 0, 2, games)
+    slate('MIA', 4, 2, 2, games)
+    slate('CIN', 4, 2, 0, games)
+    slate('CLE', 4, 2, 0, games)
+    games.push(unscored('CIN', 'CLE'), unscored('CLE', 'CIN'))
+    for (const abbr of ['NE', 'NYJ', 'BAL', 'PIT', 'HOU', 'IND', 'JAX', 'TEN', 'DEN', 'KC', 'LAC', 'LV'])
+      slate(abbr, 3, 3, 2, games)
+    const buf = playoffPicture(games).AFC.find((r) => r.abbr === 'BUF')
+    expect(buf.clinchedDivision).toBe(false)
+    expect(buf.worstRank).toBeGreaterThan(7)
+    expect(buf.clinched).toBe(true)
+  })
+
+  it('does not clinch when the same three blockers are uncoupled', () => {
+    // Identical shape, but CIN and CLE finish against NFC opponents instead of each
+    // other: all three blockers can now win out onto the floor at once, and a
+    // three-way floor tie is charged — the berth is genuinely still open.
+    const games = []
+    slate('BUF', 6, 0, 2, games)
+    slate('MIA', 4, 2, 2, games)
+    slate('CIN', 4, 2, 2, games)
+    slate('CLE', 4, 2, 2, games)
+    for (const abbr of ['NE', 'NYJ', 'BAL', 'PIT', 'HOU', 'IND', 'JAX', 'TEN', 'DEN', 'KC', 'LAC', 'LV'])
+      slate(abbr, 3, 3, 2, games)
+    const buf = playoffPicture(games).AFC.find((r) => r.abbr === 'BUF')
+    expect(buf.clinched).toBe(false)
+    expect(buf.eliminated).toBe(false)
+  })
+
+  it('keeps the whole preseason wide open: every seed 1-16, nothing flagged', () => {
+    const picture = playoffPicture(GAMES_2026)
+    for (const conf of ['AFC', 'NFC']) {
+      expect(picture[conf].every((r) => r.bestRank === 1 && r.worstRank === 16)).toBe(true)
+      expect(picture[conf].every((r) => !r.clinched && !r.clinchedDivision && !r.eliminated)).toBe(true)
+    }
   })
 })

@@ -53,17 +53,23 @@ Status key: 🔴 not yet in framework · 🟡 partially there · 🟢 confirmed 
   and the countable-games filter. This is the PLAYBOOK §2 derive-and-diff check, and it
   passed first try against real data.
 
-- 🟡 **NFL tiebreakers are a genuine framework gap.** A pairwise comparator (what a JS
-  sort gives you) cannot express two official NFL rules: the "common games (min 4)" step
-  and the 3+-team reduction procedure ("if one team wins a step, the others revert to
-  step 1"). My first attempt at common-games actually mis-crowned a division. The pruned
-  chain (h2h → division → conference → SOV → SOS → net points) reproduces the correct
-  playoff field, all 8 division winners, and 12/14 seed positions against 2025 — the miss
-  is an order swap between two identical-record wild cards who both make the field.
-  A `core/utils/tiebreak.js` should offer a *grouped* reduction API (resolve an N-way tie
-  by repeatedly applying an ordered list of criteria and re-partitioning), not a pairwise
-  comparator — and leagues declare their criteria order in the adapter. Until then, seeds
-  are a documented approximation; records are exact.
+- 🟢 **NFL tiebreakers now follow the official procedures** (closed 2026-08-08; was 🟡).
+  The earlier finding stands as the framework lesson: a pairwise comparator cannot
+  express the official rules, and the fix was exactly the *grouped* reduction API this
+  note asked for. `standings.js` now resolves ties over equal-pct GROUPS: the full
+  division and wild-card step chains (common games with the wild-card-only four-game
+  minimum, combined points-scored/points-allowed rankings, net points in
+  common/conference/all games), the 3+-club reduction with the official restart rule
+  (two survivors → step 1 of the two-club chain; three from four+ → step 2), the
+  one-club-per-division wild-card elimination with the frozen division order, the
+  head-to-head sweep, and per-slot repetition of the whole procedure. Net touchdowns is
+  a documented skip (final scores only in the data); the coin toss is deterministic
+  alphabetical. Against 2025 all 14 field positions now match ESPN, including the
+  SF/LAR wild-card order the pruned chain missed. Every step in every chain is pinned
+  by a synthetic fixture that fails if the step is removed (verified by a mutation
+  sweep over all three chains, the restart rule, the gate, the sweep, and the
+  elimination). Extracting this engine into `core/utils/tiebreak.js` — criteria
+  declared per league in the adapter — is still the right framework move.
 
 - 🔴 **Seeding is league-shaped, not generic.** `core/utils/standings.js` `byGroup` ranks
   within a group, but NFL seeding is "four division winners first (1–4), then wild cards

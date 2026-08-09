@@ -218,20 +218,45 @@ const SELECT = {
 const round = (v, p = 1) =>
   typeof v === 'number' && Number.isFinite(v) ? Number(v.toFixed(p)) : null
 
-// Integers vs 1-decimal by key suffix/meaning.
+// Integers vs 1-decimal by key suffix/meaning. Sacks (and tackles for loss) are
+// half-credited, so they keep a decimal — 16.5 rounded to 17 is simply wrong.
 const precisionFor = (key) =>
-  /Pct$|rating|Avg$|Ypg$/.test(key) || key === 'cmpPct' ? 1 : 0
+  /Pct$|rating|Avg$|Ypg$/.test(key) || key === 'cmpPct' || key === 'sacks' || key === 'tfl'
+    ? 1
+    : 0
+
+// One request per board-defining stat. With NO sort, byathlete returns only qualified
+// PASSERS (~53 rows, all QB — `category=` is ignored), so a single unsorted call sees
+// no rushers, receivers or defenders at all. Each sort key returns ESPN's qualified
+// list for that family, largest first; merging by athlete id assembles the pool every
+// leaderboard draws from. The sort key's category segment is camelCase
+// (defensiveInterceptions), unlike the response's lowercase category name — the
+// lowercase form matches zero athletes. Verified against the 2025 season boards.
+const LEADER_SORTS = [
+  'passing.passingYards',
+  'passing.passingTouchdowns',
+  'rushing.rushingYards',
+  'rushing.rushingTouchdowns',
+  'receiving.receivingYards',
+  'receiving.receptions',
+  'defensive.sacks',
+  'defensiveInterceptions.interceptions',
+]
 
 export async function fetchLeaders(season = SEASON) {
-  const d = await getJson(
-    `${WEB}/${ESPN_PATH}/statistics/byathlete?region=us&lang=en&season=${season}&seasontype=2&limit=300`
-  )
-  // The category name→index mapping is defined once at the top level; each athlete's
-  // per-category `values` array aligns to it index-for-index.
-  const catNames = Object.fromEntries((d.categories || []).map((c) => [c.name, c.names || []]))
+  const byId = new Map()
+  for (const sort of LEADER_SORTS) {
+    const d = await getJson(
+      `${WEB}/${ESPN_PATH}/statistics/byathlete?region=us&lang=en&season=${season}&seasontype=2&limit=300&sort=${sort}%3Adesc`
+    )
+    // The category name→index mapping is defined once at the top level; each athlete's
+    // per-category `values` array aligns to it index-for-index.
+    const catNames = Object.fromEntries((d.categories || []).map((c) => [c.name, c.names || []]))
 
-  return (d.athletes || [])
-    .map(({ athlete: a, categories }) => {
+    for (const { athlete: a, categories } of d.athletes || []) {
+      // Every row carries the athlete's FULL stat line regardless of which sort found
+      // it, so the first sighting is complete — later sorts can't add anything.
+      if (byId.has(a.id)) continue
       const stats = {}
       for (const cat of categories || []) {
         const pick = SELECT[cat.name]
@@ -243,15 +268,18 @@ export async function fetchLeaders(season = SEASON) {
           stats[out] = round(cat.values?.[i], precisionFor(out))
         }
       }
-      return {
+      byId.set(a.id, {
         id: a.id,
         name: a.displayName,
         short: a.shortName,
         team: a.teamShortName,
         pos: a.position?.abbreviation || null,
         ...stats,
-      }
-    })
+      })
+    }
+  }
+
+  return [...byId.values()]
     .filter((p) => p.team && p.gp)
     // Neutral, deterministic order; the Stats view re-ranks per category.
     .sort((a, b) => (b.gp ?? 0) - (a.gp ?? 0) || a.name.localeCompare(b.name))

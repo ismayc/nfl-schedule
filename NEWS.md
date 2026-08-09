@@ -6,6 +6,17 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-08-09
 
+- **Leaderboards actually cover the league now.** The ESPN `byathlete` feed
+  with no `sort=` returns only qualified passers (~53 rows, all QBs), so every
+  non-passing board in the archived seasons was garbage — rushing led by the
+  579th rusher, zero sack leaders. `fetchLeaders` now makes one request per
+  board-defining stat (`sort=<category>.<stat>:desc`, the interceptions
+  category camelCased — the lowercase form matches nothing) and merges by
+  athlete id. Sacks and tackles-for-loss keep their half-credit decimal
+  (Hendrickson's 17.5 was rounding to 18). All five archived seasons
+  regenerated and verified against the historical record (Saquon 2005,
+  Chase 1708/127, Kupp 1947/145, Watt 22.5, Diggs 11).
+
 - **Finish column and real clinch flags.** The conference standings now carry a
   Finish column — the final seeds still arithmetically possible for each club
   (gold single number once locked) — and the race flags are computed for real:

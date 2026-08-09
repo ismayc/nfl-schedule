@@ -193,6 +193,16 @@ export default function StandingsView({ games, onPick }) {
           ))}
         </div>
       )}
+
+      <p className="legend">
+        <span className="legend-item">
+          <span className="badge badge-in">♛</span> leading the division — on track for a top-4
+          seed and a home playoff game
+        </span>
+        <span className="legend-item">
+          <span className="legend-star">★</span> a team you follow
+        </span>
+      </p>
     </section>
   )
 }

@@ -759,6 +759,25 @@ select:hover,
   background: rgba(61, 220, 132, 0.16);
   color: var(--win);
 }
+
+/* Standings legend — spells out the seed/leader badges for readers who can't
+   hover the tooltips (i.e. everyone on a phone). */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 12px 2px 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-star {
+  color: var(--gold);
+}
 .badge-out {
   background: rgba(255, 107, 107, 0.16);
   color: var(--loss);

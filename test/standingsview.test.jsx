@@ -31,8 +31,16 @@ describe('StandingsView — populated (2025 season)', () => {
 
   it('marks the division winner with the crown badge', () => {
     const { container } = renderView({ games: GAMES_2025 })
-    expect(container.querySelector('.badge-in')).toBeInTheDocument()
-    expect(container.querySelector('.badge-in').textContent).toContain('♛')
+    // Scoped to the tables — the legend below them shows a decorative sample crown.
+    expect(container.querySelector('.standings .badge-in')).toBeInTheDocument()
+    expect(container.querySelector('.standings .badge-in').textContent).toContain('♛')
+  })
+
+  it('explains the crown badge in a visible legend (tooltips are hover-only)', () => {
+    const { container } = renderView({ games: GAMES_2025 })
+    const legend = container.querySelector('.legend')
+    expect(legend).toHaveTextContent(/♛ leading the division/)
+    expect(legend).toHaveTextContent(/★ a team you follow/)
   })
 
   it('renders the T column and a tie in a record (Green Bay)', () => {

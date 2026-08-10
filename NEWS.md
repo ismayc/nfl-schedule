@@ -6,6 +6,11 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-08-10
 
+- **The refresh gate is now CI's own gate.** The twice-daily refresh ran plain
+  `npm test` before committing, but a bot push triggers no CI — so refreshed
+  data could break the 100% coverage invariant invisibly until the next human
+  push (exactly what happened with the WNBA race engine this morning). The
+  refresh workflow now runs the same coverage command CI runs.
 - **The ESPN fetch layer is now vendored, not copy-pasted.** The hardened
   transport (5 retries with exponential backoff + jitter, retry only on
   5xx/429/network errors, a 6-request concurrency cap) previously lived as an

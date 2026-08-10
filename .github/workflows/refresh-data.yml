@@ -59,12 +59,15 @@ jobs:
           fi
 
       # The gate: standings are derived from the committed scores, so a bad refresh fails
-      # a test here rather than shipping a wrong-looking table.
+      # a test here rather than shipping a wrong-looking table. Run the SAME gate as
+      # CI (the 100% coverage badge), because this push triggers no CI of its own —
+      # a weaker gate here once let refreshed data dry up a covered branch and break
+      # the next human push (WNBA raceScenarios, 2026-08-10).
       - name: Install and test against the refreshed data
         if: steps.diff.outputs.changed == 'true'
         run: |
           npm ci
-          npm test
+          npm run coverage:badge
 
       # Commit straight to main (the test above is the gate). This push is authored by
       # GITHUB_TOKEN, so it does NOT trigger the CI deploy — this workflow deploys itself

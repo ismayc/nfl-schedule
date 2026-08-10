@@ -6,6 +6,15 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-08-09
 
+- **Game leaders will actually populate this season.** The refresh read
+  per-game top performers from `competitors[].leaders`, where the basketball
+  scoreboards put them — but the NFL scoreboard carries them at the
+  COMPETITION level (one game-wide top per category), so no game ever got its
+  stars and the detail modal's Game leaders block was dead. The parse now
+  reads `competition.leaders` and resolves each leader's team through its id;
+  verified against a real 2025 slate (13/13 games produce all three
+  categories, e.g. Darnold 20/30 249 3 TD for SEA @ ATL). Takes effect with
+  the first completed 2026 games.
 - **Sunday Ticket badge is honest, refresh is safer, season self-names.** The
   Sunday Ticket service matched every CBS/FOX game including the six national
   telecasts (Thanksgiving, Christmas) that every market already gets — it now

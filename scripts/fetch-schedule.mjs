@@ -161,22 +161,28 @@ async function enrichWithBoxScores(games) {
       const line = (t) => (t.linescores || []).map((l) => Number(l.value))
       const hl = line(home)
       const al = line(away)
-      const stars = (c.competitors || [])
-        .flatMap((t) =>
-          (t.leaders || [])
-            .filter((l) => GAME_LEADER_CATS.includes(l.name))
-            .map((l) => {
-              const top = l.leaders?.[0]
-              if (!top) return null
-              return {
-                cat: l.name,
-                v: top.displayValue,
-                who: top.athlete?.shortName || top.athlete?.displayName,
-                team: t.team.abbreviation,
-              }
-            })
-        )
-        .filter(Boolean)
+      // NFL leaders live at the COMPETITION level — one game-wide top per category —
+      // not on each competitor like the basketball scoreboards. The old per-competitor
+      // read matched nothing, so no game ever carried stars (verified live 2025-12-07:
+      // competitor keys have no `leaders`; c.leaders has the three categories). The
+      // leader rows carry a team id but no abbreviation, so resolve it through the
+      // competitors.
+      const abbrById = Object.fromEntries(
+        (c.competitors || []).map((t) => [t.team.id, t.team.abbreviation])
+      )
+      const stars = (c.leaders || [])
+        .filter((l) => GAME_LEADER_CATS.includes(l.name))
+        .map((l) => {
+          const top = l.leaders?.[0]
+          if (!top) return null
+          return {
+            cat: l.name,
+            v: top.displayValue,
+            who: top.athlete?.shortName || top.athlete?.displayName,
+            team: abbrById[top.team?.id ?? top.athlete?.team?.id] ?? null,
+          }
+        })
+        .filter((s) => s && s.team)
       byId.set(ev.id, {
         line: hl.length || al.length ? { home: hl, away: al } : undefined,
         stars: stars.length ? stars : undefined,

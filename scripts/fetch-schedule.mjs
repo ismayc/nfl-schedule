@@ -11,7 +11,19 @@
 import { writeFile, mkdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { SITE, CORE, WEB, getJson, fetchTeams, broadcastNames, monthRange, banner } from './lib/espn.mjs'
+import {
+  SITE,
+  CORE,
+  WEB,
+  getJson,
+  fetchRetry,
+  mapLimit,
+  CONCURRENCY,
+  fetchTeams,
+  broadcastNames,
+  monthRange,
+  banner,
+} from './lib/espn.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ESPN_PATH = 'football/nfl'
@@ -307,28 +319,24 @@ async function mirrorLogos(teams) {
   await mkdir(join(ROOT, 'public/logos'), { recursive: true })
   let n = 0
   let bytes = 0
-  const grab = async (url, file) => {
-    const res = await fetch(resized(url))
-    if (!res.ok) throw new Error(`logo ${file}: HTTP ${res.status}`)
-    return Buffer.from(await res.arrayBuffer())
-  }
+  const grab = async (url) => Buffer.from(await (await fetchRetry(resized(url))).arrayBuffer())
   const put = async (file, buf) => {
     await writeFile(join(ROOT, 'public/logos', file), buf)
     n++
     bytes += buf.length
   }
-  await Promise.all(
-    teams.map(async (t) => {
-      if (!t.logo) return
-      const light = await grab(t.logo, `${t.slug}.png`)
-      await put(`${t.slug}.png`, light)
-      // Fall back to the light logo when a team has no ESPN "dark" variant (e.g. an
-      // expansion or relocated team): the dark theme renders `${slug}-dark.png`, so a
-      // missing file shows an invisible logo. A full-colour ball reads fine on dark.
-      const dark = t.logoDark ? await grab(t.logoDark, `${t.slug}-dark.png`) : light
-      await put(`${t.slug}-dark.png`, dark)
-    })
-  )
+  // Cap concurrency like the schedule fetches — firing every team's logos at once is
+  // exactly the burst the retry policy exists to survive.
+  await mapLimit(teams, CONCURRENCY, async (t) => {
+    if (!t.logo) return
+    const light = await grab(t.logo)
+    await put(`${t.slug}.png`, light)
+    // Fall back to the light logo when a team has no ESPN "dark" variant (e.g. an
+    // expansion or relocated team): the dark theme renders `${slug}-dark.png`, so a
+    // missing file shows an invisible logo. A full-colour ball reads fine on dark.
+    const dark = t.logoDark ? await grab(t.logoDark) : light
+    await put(`${t.slug}-dark.png`, dark)
+  })
   return { n, kb: Math.round(bytes / 1024) }
 }
 

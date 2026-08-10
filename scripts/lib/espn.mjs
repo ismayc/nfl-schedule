@@ -6,6 +6,10 @@
 //
 // Node built-ins only.
 
+import { getJson, mapLimit, CONCURRENCY } from './fetch.mjs'
+
+export { sleep, backoffMs, CONCURRENCY, mapLimit, fetchRetry, getJson, getText } from './fetch.mjs'
+
 export const SITE = 'https://site.api.espn.com/apis/site/v2/sports'
 export const CORE = 'https://site.api.espn.com/apis/v2/sports'
 export const WEB = 'https://site.web.api.espn.com/apis/common/v3/sports'
@@ -13,57 +17,6 @@ export const WEB = 'https://site.web.api.espn.com/apis/common/v3/sports'
 export const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`)
   return i > -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-
-// Cap how many requests are in flight. The old code fired every team at once — a burst
-// big enough to provoke the very 500s the retries then had to absorb. Six at a time is
-// still fast and markedly gentler on the feed.
-const CONCURRENCY = 6
-
-async function mapLimit(items, limit, fn) {
-  const out = new Array(items.length)
-  let next = 0
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const i = next++
-      out[i] = await fn(items[i], i)
-    }
-  })
-  await Promise.all(workers)
-  return out
-}
-
-
-// 1s, 2s, 4s, 8s, plus up to 500ms of jitter so parallel callers don't all retry in
-// lockstep and re-create the burst that caused the failure.
-const backoffMs = (attempt) => 2 ** attempt * 1000 + Math.random() * 500
-
-// ESPN 500s at random under load. A refresh makes ~90 calls, so with the old
-// 3-try/1.5s policy a single blip failed the whole run — which it did about once a week
-// (nba 2026-07-28, wnba 2026-07-25, both a lone `HTTP 500` on one team's schedule).
-//
-// Retry only what's worth retrying: a 5xx, a 429, or a network-level error. A 404 or a
-// 400 is a real answer and fails immediately rather than sleeping 15 seconds first.
-export async function getJson(url, tries = 5) {
-  let lastErr
-  for (let attempt = 0; attempt < tries; attempt++) {
-    if (attempt) await sleep(backoffMs(attempt - 1))
-
-    let res
-    try {
-      res = await fetch(url)
-    } catch (err) {
-      lastErr = err // DNS, connection reset, timeout — always worth another go
-      continue
-    }
-
-    if (res.ok) return await res.json()
-    if (res.status < 500 && res.status !== 429) throw new Error(`${url}\n  HTTP ${res.status}`)
-    lastErr = new Error(`HTTP ${res.status}`)
-  }
-  throw new Error(`${url}\n  ${lastErr.message} — still failing after ${tries} attempts`)
 }
 
 export const yyyymmdd = (d) =>

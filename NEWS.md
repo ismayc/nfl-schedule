@@ -4,6 +4,20 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-08-10
+
+- **The ESPN fetch layer is now vendored, not copy-pasted.** The hardened
+  transport (5 retries with exponential backoff + jitter, retry only on
+  5xx/429/network errors, a 6-request concurrency cap) previously lived as an
+  inline copy in each data script; it now lives in `scripts/lib/fetch.mjs`,
+  vendored byte-for-byte from the canonical copy in `sports-viewer-meta`
+  (which diffs every repo's copy via `check-fetch-sync`). No behavior change
+  to the refresh pipeline.
+- **Logo mirroring now retries too.** The crest/logo downloads previously used a
+  bare `fetch` with no retry — a lone transient ESPN 500 could skip a logo (or
+  fail the run). They now go through the same `fetchRetry` policy as the data
+  fetches, with the concurrency cap applied.
+
 ## 2026-08-09
 
 - **Game leaders will actually populate this season.** The refresh read

@@ -4,6 +4,21 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-08-11
+
+- **Archived leader boards now show team badges.** They were hidden behind a
+  `showTeam={false}` inherited from the basketball siblings, whose feeds answer a
+  season-scoped query with the player's *current* club. ESPN's NFL feed does not
+  do that — `season=2021` puts Davante Adams in Green Bay, `season=2022` puts
+  Josh Jacobs in Las Vegas and Derrick Henry in Tennessee, all three of whom have
+  since moved — so the badges were correct all along and simply weren't rendered.
+  The stale explanatory copy under the board is gone with them.
+
+  Checked at the same time, and NOT changed, because the NFL board doesn't have
+  the problems its siblings did: every category here is a season **total**
+  (yards, TDs, receptions, sacks, INTs), so there is no per-game average needing
+  a games qualifier and no decimal to break ties on.
+
 ## 2026-08-10
 
 - **The refresh gate is now CI's own gate.** The twice-daily refresh ran plain

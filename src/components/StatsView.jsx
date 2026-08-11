@@ -107,7 +107,7 @@ const UNITS = [
   { key: 'defense', label: 'Defense' },
 ]
 
-function LeaderBoard({ cat, rows, onPickTeam, onPickPlayer, showTeam }) {
+function LeaderBoard({ cat, rows, onPickTeam, onPickPlayer }) {
   const max = rows[0]?.value || 1
   if (rows.length === 0) return null
 
@@ -119,13 +119,11 @@ function LeaderBoard({ cat, rows, onPickTeam, onPickPlayer, showTeam }) {
           {rows.map((p) => (
             <tr key={p.id}>
               <td className="lead-rank">{p.rank}</td>
-              {showTeam && (
-                <td className="lead-team">
-                  <button onClick={() => onPickTeam?.(p.team)} title={p.team}>
-                    <TeamLogo abbr={p.team} size={20} />
-                  </button>
-                </td>
-              )}
+              <td className="lead-team">
+                <button onClick={() => onPickTeam?.(p.team)} title={p.team}>
+                  <TeamLogo abbr={p.team} size={20} />
+                </button>
+              </td>
               <td className="lead-name">
                 <button className="lead-player" onClick={() => onPickPlayer?.(p)}>
                   {p.name}
@@ -147,11 +145,12 @@ function LeaderBoard({ cat, rows, onPickTeam, onPickPlayer, showTeam }) {
 // `getRows(cat)` supplies each board: the live view computes it from the committed
 // PLAYERS table, the History tab reads the season's stored board (which fetch-history
 // built with this same leaderboard(), ranks and ties included).
-// `showTeam` is off for archived seasons. ESPN's per-athlete stats carry the player's
-// CURRENT team even when the season is asked for, and only for players who later moved —
-// so a historical board would silently mix correct and anachronistic badges. The name,
-// rank and value are season-accurate; the team is not, so it isn't shown.
-export function Leaders({ getRows, onPickTeam, onPickPlayer, showTeam = true }) {
+// Archived boards badge their rows, because ESPN's NFL feed answers a season-scoped query
+// with that SEASON's club — verified against players who have since moved: season=2021 puts
+// Davante Adams in Green Bay, season=2022 puts Josh Jacobs in Las Vegas and Derrick Henry in
+// Tennessee. (The basketball feeds do NOT do this; they answer with the current club, which
+// is why the sibling viewers resolve season teams from the per-team splits instead.)
+export function Leaders({ getRows, onPickTeam, onPickPlayer }) {
   // PLAYERS is empty until the season starts, so every category comes back empty. Show
   // one honest line rather than four empty cards.
   const anyData = useMemo(() => LEADER_CATEGORIES.some((c) => getRows(c).length > 0), [getRows])
@@ -180,7 +179,6 @@ export function Leaders({ getRows, onPickTeam, onPickPlayer, showTeam = true }) 
                   rows={getRows(c)}
                   onPickTeam={onPickTeam}
                   onPickPlayer={onPickPlayer}
-                  showTeam={showTeam}
                 />
               ))}
             </div>

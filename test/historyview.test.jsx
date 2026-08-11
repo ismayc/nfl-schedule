@@ -141,6 +141,21 @@ describe('HistoryView — stats for one season', () => {
     expect(first).toHaveTextContent('4624')
   })
 
+  // Archived boards badge their rows, which they did not before: the prop that hid them was
+  // inherited from the basketball siblings, whose feeds answer a season-scoped query with
+  // the player's CURRENT club. ESPN's NFL feed answers with that season's, so the badge is
+  // safe here — Davante Adams sat 3rd in 2021 receiving yards as a Packer, and has since
+  // played for the Raiders, Jets and Rams. A stale-club bug would show one of those.
+  it('badges an archived board with the club he played for that season', async () => {
+    const { container } = await stats(2021)
+    const recYds = [...container.querySelectorAll('.card')].find((c) =>
+      c.querySelector('.card-title')?.textContent.includes('Receiving yards')
+    )
+    const third = recYds.querySelectorAll('.leaders tr')[2]
+    expect(third).toHaveTextContent('Davante Adams')
+    expect(third.querySelector('.lead-team button')).toHaveAttribute('title', 'GB')
+  })
+
   it('opens a leader’s pop-out with that season’s stat line, not this season’s', async () => {
     const onPickPlayer = vi.fn()
     const { container } = await stats(2023, { onPickPlayer })

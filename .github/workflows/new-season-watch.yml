@@ -1,0 +1,168 @@
+name: New season watch
+
+# Nothing rolls over on its own — the refresh follows the committed teams.js season —
+# so this watches for the day the NFL posts the next season's schedule, opens an
+# issue, and drafts the rollover PR: the rollover is a decision rather than a
+# discovery, and the fetching is already done when you make it. Ported from
+# the-nba-schedule after its 2026-27 release; the detector was re-derived for the
+# NFL and verified against the live 2026 scoreboard (all 272 games found).
+#
+# It lives here rather than in a scheduled cloud agent because ESPN's API is not
+# reachable from that sandbox — its egress proxy answers `EGRESS_BLOCKED` for
+# site.api.espn.com. GitHub's runners reach it fine, which the twice-daily refresh
+# job already proves.
+#
+# Quiet by design: a "not yet" run writes a line to the job summary and nothing else.
+# Only a real release opens an issue, and only once.
+
+on:
+  schedule:
+    # Daily. The league releases the full schedule in mid-May (usually with a
+    # prime-time reveal), but there is no month gate — the once-ever issue/branch
+    # guards make a year-round watch harmless.
+    - cron: '5 19 * * *'
+  workflow_dispatch:
+
+# Scheduler delays can bunch runs together; the once-ever guards below check before
+# they create, so two runs in flight at once could double-file. Queue instead.
+concurrency:
+  group: new-season-watch
+  cancel-in-progress: false
+
+permissions:
+  issues: write # the default token is read-only, so opening an issue needs this
+  contents: write # push the rollover branch
+  pull-requests: write # open the draft rollover PR
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      # Node built-ins only, so no install step.
+      - name: Check whether the next season is published
+        id: check
+        run: node scripts/check-new-season.mjs | tee -a "$GITHUB_OUTPUT"
+
+      - name: Say what was found
+        env:
+          SUMMARY: ${{ steps.check.outputs.summary }}
+        run: echo "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+
+      # One issue per season, ever: the search covers open AND closed, so closing the
+      # issue doesn't make tomorrow's run open another.
+      - name: Open an issue the day it lands
+        if: steps.check.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SEASON: ${{ steps.check.outputs.season }}
+          YEAR: ${{ steps.check.outputs.year }}
+          COUNT: ${{ steps.check.outputs.count }}
+          PARTIAL: ${{ steps.check.outputs.partial }}
+          SUMMARY: ${{ steps.check.outputs.summary }}
+        run: |
+          TITLE="NFL $SEASON schedule is out — roll the viewer over"
+          if [ -n "$(gh issue list --state all --search "$TITLE" --json number --jq '.[0].number')" ]; then
+            echo "Already filed for $SEASON — nothing to do." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # Body via a file, not a heredoc inside $( ): an apostrophe in the prose is
+          # enough to break the latter.
+          cat > /tmp/issue-body.md <<EOF
+          $SUMMARY
+
+          Found by \`scripts/check-new-season.mjs\` on $(date -u +%Y-%m-%d).
+          Partial release: \`$PARTIAL\` ($COUNT regular-season games; a complete release is 272).
+
+          ## Rolling over
+
+          1. Archive the finished season first — \`node scripts/fetch-history.mjs\`
+          2. Pull the new one — \`node scripts/fetch-schedule.mjs --season $YEAR --allow-shrink\`
+             (\`--allow-shrink\` is required: the committed season has more games than a
+             freshly published schedule, and the shrink guard refuses that by default.)
+          3. Expect the suite to fail. Tests pinned to the committed data are the
+             annual rollover chore, not a regression — reach for the rollover-proof
+             fixture recipe the NBA repo used (archive-as-fixture, frozen rows).
+
+          The refresh follows the committed season in \`src/data/teams.js\`, so nothing
+          switches on its own — merging the rollover PR is what moves the site (and the
+          refresh bot) to the new season.
+          EOF
+          gh issue create --title "$TITLE" --body-file /tmp/issue-body.md
+
+      # And do the fetching, on a branch, as a DRAFT PR — the mechanical half of the
+      # rollover, so what is left is the judgement half (retuning the pinned tests).
+      #
+      # Only on a COMPLETE release. A staged partial would commit half a season, and
+      # the branch guard below means it would never re-run to finish it — so a partial
+      # release files the issue and waits. The day the full schedule appears, this
+      # fires.
+      #
+      # One PR per season, ever: the branch carries the season, and an existing branch
+      # — open, merged, or abandoned — means this already ran. NEVER delete a
+      # season-<label> branch after merging: its existence is the once-per-season
+      # guard. Nothing here re-runs on a branch a human has started editing.
+      - name: Draft the rollover PR
+        if: steps.check.outputs.released == 'true' && steps.check.outputs.partial == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SEASON: ${{ steps.check.outputs.season }}
+          YEAR: ${{ steps.check.outputs.year }}
+          COUNT: ${{ steps.check.outputs.count }}
+        run: |
+          BRANCH="season-$SEASON"
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            echo "Branch \`$BRANCH\` already exists — rollover PR already drafted." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+
+          # Archive first, while src/data/teams.js still names the FINISHED season:
+          # fetch-history's --to defaults to that SEASON, and fetch-schedule is about
+          # to rewrite it.
+          node scripts/fetch-history.mjs
+          # --allow-shrink is required: a freshly published season has fewer games than
+          # the finished one it replaces, and the shrink guard refuses that by default.
+          node scripts/fetch-schedule.mjs --season "$YEAR" --allow-shrink
+
+          if git diff --quiet -- src/data public/logos; then
+            echo "Fetched $SEASON but nothing changed — no PR opened." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          git add -A -- src/data public/logos
+          git commit -m "Roll the viewer over to the $SEASON season"
+          git push -u origin "$BRANCH"
+
+          # Body via a file for the same reason as the issue above.
+          cat > /tmp/pr-body.md <<EOF
+          Drafted by \`New season watch\` on $(date -u +%Y-%m-%d): the NFL has published
+          the full $SEASON regular season ($COUNT games), so this pulls it in.
+
+          - \`node scripts/fetch-history.mjs\` — archives the finished season
+          - \`node scripts/fetch-schedule.mjs --season $YEAR --allow-shrink\` — the new one
+
+          ## What is left for a human
+
+          **The suite will fail, and that is the chore, not a regression.** Tests that
+          pin the committed data need retuning — reach for the rollover-proof fixture
+          recipe the NBA repo used, and expect the default view to need the
+          Later-games cap exercised against a fully-unplayed season.
+
+          No checks will appear on this PR until then: it was pushed by
+          \`GITHUB_TOKEN\`, and GitHub does not trigger workflows on those pushes. Your
+          first commit to \`$BRANCH\` starts CI.
+
+          Nothing is urgent — but nothing switches on its own either: the refresh
+          follows the committed \`teams.js\` season, so the site stays on the finished
+          season until this PR merges.
+          EOF
+          gh pr create --draft --base main --head "$BRANCH" \
+            --title "Roll the viewer over to the $SEASON season" --body-file /tmp/pr-body.md

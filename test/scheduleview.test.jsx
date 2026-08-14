@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ScheduleView from '../src/components/ScheduleView.jsx'
+import ScheduleView, { RECENT_LOOKAHEAD_DAYS } from '../src/components/ScheduleView.jsx'
 import { GAMES } from '../src/data/schedule.js'
+import { dayKey, todayKey } from '../src/utils/time.js'
 import { GAMES_2025 } from './fixtures/season-2025.js'
 
 afterEach(cleanup)
@@ -52,6 +53,57 @@ describe('ScheduleView', () => {
     expect(container.querySelector('.day.is-today')).toBeTruthy()
     expect(container.querySelector('.day-count').textContent).toBe('1 game')
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+  })
+
+  it('caps the default view at a fortnight of upcoming game-days behind a Later toggle', () => {
+    // 20 future game-days, two games each — the default view must show the first 14
+    // days and fold the remaining 6 (12 games) behind "Later games". Without the cap
+    // a fresh rollover renders the whole 272-game season on load.
+    const base = Date.now()
+    const wk = []
+    for (let d = 1; d <= 20; d++) {
+      const tip = new Date(base + d * 24 * 60 * 60 * 1000).toISOString()
+      wk.push({ id: `f${d}a`, seasonType: 'regular', week: 1, tip, home: 'KC', away: 'DEN' })
+      wk.push({ id: `f${d}b`, seasonType: 'regular', week: 1, tip, home: 'SF', away: 'SEA' })
+    }
+    const { container } = render(<ScheduleView games={wk} tz={TZ} />)
+    expect(container.querySelectorAll('.day')).toHaveLength(RECENT_LOOKAHEAD_DAYS)
+
+    const later = screen.getByRole('button', { name: /Later games/ })
+    expect(within(later).getByText('12')).toBeInTheDocument()
+    fireEvent.click(later)
+    expect(container.querySelectorAll('.day')).toHaveLength(20)
+
+    // The toggle flips to a collapse control and folds the tail back away.
+    fireEvent.click(screen.getByRole('button', { name: /Later games/ }))
+    expect(container.querySelectorAll('.day')).toHaveLength(RECENT_LOOKAHEAD_DAYS)
+  })
+
+  it('caps the committed season the same way, counts derived from the data', () => {
+    // Refresh-stable: expectations come from the imported schedule, not hardcoded
+    // dates. As the season plays out the upcoming window shrinks; the cap (and its
+    // toggle) must engage exactly when more than a fortnight of game-days remains.
+    const today = todayKey(TZ)
+    const upcomingDays = new Map()
+    for (const g of GAMES) {
+      const key = dayKey(g.tip, TZ)
+      if (key >= today) upcomingDays.set(key, (upcomingDays.get(key) ?? 0) + 1)
+    }
+    const dayKeys = [...upcomingDays.keys()].sort()
+    const hiddenGames = dayKeys
+      .slice(RECENT_LOOKAHEAD_DAYS)
+      .reduce((n, k) => n + upcomingDays.get(k), 0)
+
+    const { container } = render(<ScheduleView games={GAMES} tz={TZ} />)
+    expect(container.querySelectorAll('.day')).toHaveLength(
+      Math.min(dayKeys.length, RECENT_LOOKAHEAD_DAYS)
+    )
+    const later = screen.queryByRole('button', { name: /Later games/ })
+    if (hiddenGames > 0) {
+      expect(within(later).getByText(String(hiddenGames))).toBeInTheDocument()
+    } else {
+      expect(later).toBeNull()
+    }
   })
 
   it('opens a game when its card is clicked', async () => {

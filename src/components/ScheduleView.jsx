@@ -3,6 +3,13 @@ import { dayKey, dayLabel, todayKey } from '../utils/time.js'
 import { PLAYOFF } from '../config/league.js'
 import GameCard from './GameCard.jsx'
 
+// How many upcoming game-DAYS the default view shows before collapsing the rest
+// behind the "Later games" toggle. Counted in game-days (not calendar days), and an
+// NFL fortnight of game-days spans roughly four to five season weeks since games
+// cluster on ~3 days a week — the point is that a fresh rollover no longer renders
+// the entire 272-game season on load. (Ported from the NBA viewer.)
+export const RECENT_LOOKAHEAD_DAYS = 14
+
 // A game's collapse bucket. Regular-season games group by week (1..18); postseason
 // games group by round (Wild Card → Super Bowl), ordered right after week 18. The
 // fetch script tags each postseason game with a round key (WC/DIV/CONF/SB); a round
@@ -61,12 +68,24 @@ export default function ScheduleView({ games, tz, hideScores, showPast = false, 
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [games, tz])
 
+  // The "Later games" collapse is deliberately component-local, like the per-day
+  // folding below: it is never written to the URL or localStorage, so it can't add a
+  // persisted readState key (which would break the family's deep-equal link tests).
+  const [showLater, setShowLater] = useState(false)
+
   // Days are dropped whole rather than filtering individual games, so a game earlier
   // today still shows — "past" means a previous calendar day in the viewer's zone.
-  const days = useMemo(
-    () => (showPast ? allDays : allDays.filter(([key]) => key >= today)),
-    [allDays, showPast, today]
-  )
+  // The default view caps at the next fortnight of game-days, with the rest of the
+  // upcoming season behind "Later games"; Full season (showPast) shows everything.
+  const { days, laterCount } = useMemo(() => {
+    if (showPast) return { days: allDays, laterCount: 0 }
+    const upcoming = allDays.filter(([key]) => key >= today)
+    const hidden = showLater ? [] : upcoming.slice(RECENT_LOOKAHEAD_DAYS)
+    return {
+      days: hidden.length ? upcoming.slice(0, RECENT_LOOKAHEAD_DAYS) : upcoming,
+      laterCount: hidden.reduce((n, [, gs]) => n + gs.length, 0),
+    }
+  }, [allDays, showPast, showLater, today])
 
   // Full-season week/round grouping — what the collapsed "show past" view renders.
   const weeks = useMemo(() => bucketsOf(allDays), [allDays])
@@ -204,9 +223,33 @@ export default function ScheduleView({ games, tz, hideScores, showPast = false, 
     )
   }
 
-  // Default view: today onward as a plain flat list — short by design.
+  // Default view: today onward as a plain flat list — short by design. The rest of
+  // the upcoming season sits behind a toggle mirroring the "Earlier games" chip.
   if (!showPast) {
-    return <section className="view schedule">{days.map(renderDay)}</section>
+    return (
+      <section className="view schedule">
+        {days.map(renderDay)}
+        {laterCount > 0 && (
+          <button
+            className="chip later-toggle"
+            onClick={() => setShowLater(true)}
+            title="Show the rest of the upcoming season"
+          >
+            <span aria-hidden="true">▸</span> Later games
+            <span className="chip-count">{laterCount}</span>
+          </button>
+        )}
+        {showLater && (
+          <button
+            className="chip later-toggle"
+            onClick={() => setShowLater(false)}
+            title="Collapse back to the next fortnight of game-days"
+          >
+            <span aria-hidden="true">▾</span> Later games
+          </button>
+        )}
+      </section>
+    )
   }
 
   // Full season: a sticky week/round jump-bar over collapsible sections, only the

@@ -539,6 +539,12 @@ select:hover,
   border-radius: 999px;
 }
 
+/* The "Later games" expander at the foot of the default schedule list. */
+.later-toggle {
+  display: block;
+  margin: 14px auto 4px;
+}
+
 /* Count of what's hidden behind a toggle. */
 .chip-count {
   background: var(--bg-soft);

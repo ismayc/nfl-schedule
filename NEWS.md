@@ -6,6 +6,15 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-08-14
 
+- **The default schedule now folds the far future behind "Later games".** With
+  the 2026 season not kicking off until September, nothing is in the past, so
+  the default view was rendering all 272 games on load — the same fresh-rollover
+  weight that timed out the NBA viewer's CI app tests. It now shows the next
+  fortnight of game-days (roughly four to five season weeks, since NFL games
+  cluster on ~3 days a week), with the rest behind a "Later games" toggle that
+  mirrors "Earlier games" (count badge included). The toggle is component-local,
+  never in the URL or localStorage (ported from nba-schedule).
+
 - **A PR branch can no longer cancel main's CI or deploy.** The whole CI
   workflow (pull-request runs included) and the refresh workflow shared one
   static `pages` concurrency group; GitHub keeps one running + one pending run

@@ -6,6 +6,15 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-08-14
 
+- **A PR branch can no longer cancel main's CI or deploy.** The whole CI
+  workflow (pull-request runs included) and the refresh workflow shared one
+  static `pages` concurrency group; GitHub keeps one running + one pending run
+  per group and each new arrival cancels the previous pending one, so a busy PR
+  branch could kill main's queued runs — this bit the NBA viewer during its
+  2026-08-13 rollover PR. CI now groups per ref, the refresh has its own group,
+  and only the Pages deploy keeps a shared job-level `pages` lock (ported from
+  nba-schedule).
+
 - **The refresh now defaults to the committed season, not the calendar.** The
   fetch script derived its default season from today's date; the NBA viewer
   showed (2026-08-13) that the morning after a rollover this re-fetches the

@@ -8,10 +8,14 @@ on:
 permissions:
   contents: read
 
-# A push that lands while a deploy is running should supersede it, not queue behind
-# it — but never cancel a deploy midway.
+# Per-ref group: a PR branch's runs must never occupy main's slot. A single static
+# group bit on 2026-08-13 — GitHub keeps one running + one pending run per group and
+# each new arrival CANCELS the previous pending one, so while the rollover PR was
+# pushing, main's CI (and its deploy) kept getting cancelled before it could start.
+# The only thing that must serialize repo-wide is the Pages deploy, which has its own
+# job-level `pages` group below (shared with refresh-data's deploy job).
 concurrency:
-  group: pages
+  group: ci-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -37,6 +41,10 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Serialize Pages deploys across workflows (CI + refresh-data), never mid-cancel.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     permissions:
       pages: write
       id-token: write

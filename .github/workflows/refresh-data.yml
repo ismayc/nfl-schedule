@@ -20,10 +20,12 @@ permissions:
   pages: write # deploy the rebuilt site
   id-token: write # OIDC for actions/deploy-pages
 
-# Share the Pages concurrency group with CI so a refresh deploy and a push deploy never
-# overlap — but never cancel a deploy midway.
+# The fetch/test phase needs no repo-wide lock — only the Pages deploy must serialize
+# with CI's, and that lives as a job-level `pages` group on both deploy jobs. A static
+# workflow-level `pages` group here used to occupy the shared slot for the whole
+# fetch+gate run and helped cancel main's queued CI on 2026-08-13.
 concurrency:
-  group: pages
+  group: refresh-data
   cancel-in-progress: false
 
 jobs:
@@ -96,6 +98,10 @@ jobs:
     needs: refresh
     if: needs.refresh.outputs.changed == 'true'
     runs-on: ubuntu-latest
+    # Serialize Pages deploys across workflows (CI + refresh-data), never mid-cancel.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}

@@ -24,17 +24,19 @@ import {
   monthRange,
   banner,
 } from './lib/espn.mjs'
+import { SEASON as COMMITTED_SEASON } from '../src/data/teams.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ESPN_PATH = 'football/nfl'
 const args = process.argv.slice(2)
-// An NFL season is named for its September: during the January–February playoffs the
-// calendar year is already one ahead, so the default rolls back until March.
-const defaultSeason = () => {
-  const d = new Date()
-  return d.getMonth() < 2 ? d.getFullYear() - 1 : d.getFullYear()
-}
-const SEASON = Number(args[args.indexOf('--season') + 1]) || defaultSeason()
+// An NFL season is named for its September. The default is the season the app is
+// COMMITTED to (teams.js), so the unattended refresh always refreshes what the site
+// is showing; only a rollover moves that target. A calendar-date heuristic here
+// (roll back during the Jan–Feb playoffs) is the class that bit the NBA viewer the
+// morning after its 2026-08-13 rollover: the date disagreed with the freshly
+// committed season and the bot re-fetched the ARCHIVED season over it — growth, so
+// the shrink guard waved it through, and only the coverage gate stopped the revert.
+const SEASON = Number(args[args.indexOf('--season') + 1]) || COMMITTED_SEASON
 const WITH_LOGOS = !args.includes('--no-logos')
 
 // ESPN seasonType ids: 1=preseason (skipped — its weeks 1–4 collide with the regular

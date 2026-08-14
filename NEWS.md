@@ -4,6 +4,17 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-08-14
+
+- **The refresh now defaults to the committed season, not the calendar.** The
+  fetch script derived its default season from today's date; the NBA viewer
+  showed (2026-08-13) that the morning after a rollover this re-fetches the
+  ARCHIVED season over the freshly committed one — growth, so the shrink guard
+  waves it through, and only the coverage gate stops the site reverting a whole
+  season. The default is now `SEASON` from `src/data/teams.js`: the bot
+  refreshes whatever season the site is committed to, and only a rollover moves
+  that target.
+
 ## 2026-08-11
 
 - **Archived leader boards now show team badges.** They were hidden behind a

@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { SERVICE_CATALOG } from '../utils/watch.js'
+import { SERVICE_CATALOG, LOCAL_CATALOG } from '../utils/watch.js'
 
 const KEY = 'nfl:services'
-const VALID = new Set(SERVICE_CATALOG.map((s) => s.key))
+// Local-channel keys come from the refreshed schedule data, so a feed ESPN stops
+// naming simply drops out of VALID and the saved selection sheds it on next load.
+const VALID = new Set([...SERVICE_CATALOG, ...LOCAL_CATALOG].map((s) => s.key))
 const ServicesCtx = createContext(null)
 
 // Inert fallback so components (and tests) render standalone without a provider —

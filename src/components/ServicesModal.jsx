@@ -1,4 +1,5 @@
-import { SERVICE_CATALOG } from '../utils/watch.js'
+import { useState } from 'react'
+import { SERVICE_CATALOG, LOCAL_CATALOG } from '../utils/watch.js'
 import { useServices } from '../context/services.jsx'
 import { useModalA11y } from '../hooks/useModalA11y.js'
 
@@ -7,6 +8,9 @@ import { useModalA11y } from '../hooks/useModalA11y.js'
 export default function ServicesModal({ onClose }) {
   const { has, toggle, count, clear } = useServices()
   const ref = useModalA11y(onClose)
+  // The local-channel shelf starts open only when the viewer already picked one, so
+  // the common national-only case stays compact.
+  const [localsOpen, setLocalsOpen] = useState(() => LOCAL_CATALOG.some((s) => has(s.key)))
 
   return (
     <div className="modal-wrap" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -38,6 +42,31 @@ export default function ServicesModal({ onClose }) {
             </label>
           ))}
         </div>
+
+        {LOCAL_CATALOG.length > 0 && (
+          <details
+            className="svc-local"
+            open={localsOpen}
+            onToggle={(e) => setLocalsOpen(e.currentTarget.open)}
+          >
+            <summary>Local &amp; regional channels</summary>
+            <p className="cal-note">
+              Market TV stations and team streams named on this season&rsquo;s games, grouped
+              by the team they follow. Carriage depends on where you live, so check the ones
+              your own provider actually gives you — a station on your live-TV bundle at home
+              won&rsquo;t be on the same bundle in another market.
+            </p>
+            <div className="svc-list">
+              {LOCAL_CATALOG.map((s) => (
+                <label key={s.key} className={`svc-item ${has(s.key) ? 'on' : ''}`}>
+                  <input type="checkbox" checked={has(s.key)} onChange={() => toggle(s.key)} />
+                  <span className="svc-name">{s.label}</span>
+                  <span className="svc-kind">{s.team || 'Local'}</span>
+                </label>
+              ))}
+            </div>
+          </details>
+        )}
 
         <div className="svc-foot">
           <span className="dim">{count} selected</span>

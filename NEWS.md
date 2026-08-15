@@ -4,6 +4,17 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-08-15
+
+- **My services is ready for local & regional channels.** Ported from
+  wnba-schedule: any market feed (an RSN or local station) named in the schedule
+  data becomes its own pickable entry in a collapsible "Local & regional
+  channels" shelf, grouped by the team it follows, so carriage that depends on
+  where you live is your choice rather than a wrong national guess. This
+  league's ESPN slate is entirely national today, so the shelf stays hidden until
+  such a feed appears — at which point it shows up on its own, with no code
+  change.
+
 ## 2026-08-14
 
 - **A New season watch now guards the rollover.** Ported from nba-schedule

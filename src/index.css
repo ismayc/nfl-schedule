@@ -482,6 +482,28 @@ select:hover,
   color: var(--text-faint);
 }
 
+/* Collapsible shelf of market-dependent channels. The summary keeps the browser's
+   native disclosure marker (block layout — flex would remove it). */
+.svc-local {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.svc-local summary {
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.svc-local .cal-note {
+  margin-top: 6px;
+}
+
+.svc-local .svc-list {
+  margin-top: 8px;
+}
+
 .svc-foot {
   display: flex;
   align-items: center;

@@ -1,3 +1,5 @@
+import { GAMES } from '../data/schedule.js'
+
 // The streaming services and TV packages a viewer can tell us they have, so the
 // schedule can flag which games they can actually watch — and filter to them.
 //
@@ -14,6 +16,10 @@
 // gets depends on where you live — ESPN publishes no market/DMA data), so a match
 // there means "on your local CBS/FOX if your market carries this game." See
 // isRegional() below.
+//
+// A market-specific feed (an RSN or local station) can't be folded into a bundle's
+// mapping — carriage depends on where you live. Any such name in the data becomes a
+// pickable entry instead; see LOCAL_CATALOG below.
 
 // National network names, by the exact string ESPN emits in `broadcast`.
 const FOX = 'FOX'
@@ -61,6 +67,61 @@ export const SERVICE_CATALOG = [
   { key: 'cable', label: 'Cable / Satellite', kind: 'bundle', match: carries(FOX, CBS, NBC, ESPN, ABC, NFLNET) },
 ]
 
+// Every name the national catalog above already accounts for — a broadcast entry
+// outside this set lands in the local-channel picker. The NFL's slate is entirely
+// national today, so this catalog is normally EMPTY and the picker's local section
+// hides itself — it exists so a market feed ESPN starts naming shows up on its own.
+const NATIONAL_NAMES = new Set([
+  FOX,
+  CBS,
+  NBC,
+  ESPN,
+  ABC,
+  PRIME,
+  NFLNET,
+  NETFLIX,
+  'ESPN+',
+  'Peacock',
+  'Paramount+',
+  'NFL+',
+])
+
+// The distinct local/regional feeds a season's games name, as picker entries. Each
+// feed is attributed to the one team present in EVERY game it airs (a market feed
+// carries its team home and away) — `team` is that abbr, or null if no single team
+// survives the intersection. Sorted by team then name so the picker reads as a
+// per-market list. Pure so tests can feed fixture games; the app-facing
+// LOCAL_CATALOG below derives from the committed schedule, so it tracks whatever
+// ESPN currently emits.
+export function localChannelCatalog(games) {
+  const teamsByName = new Map()
+  for (const g of games) {
+    for (const b of g.broadcast || []) {
+      if (NATIONAL_NAMES.has(b)) continue
+      const prev = teamsByName.get(b)
+      const pair = [g.home, g.away]
+      teamsByName.set(b, new Set(prev ? pair.filter((t) => prev.has(t)) : pair))
+    }
+  }
+  return [...teamsByName.entries()]
+    .map(([name, teams]) => ({
+      key: `local:${name}`,
+      label: name,
+      kind: 'local',
+      team: teams.size === 1 ? [...teams][0] : null,
+      match: carries(name),
+    }))
+    .sort(
+      (a, b) =>
+        (a.team || '\uffff').localeCompare(b.team || '\uffff') ||
+        a.label.localeCompare(b.label)
+    )
+}
+
+export const LOCAL_CATALOG = localChannelCatalog(GAMES)
+
+const FULL_CATALOG = [...SERVICE_CATALOG, ...LOCAL_CATALOG]
+
 export const SERVICE_BY_KEY = Object.fromEntries(SERVICE_CATALOG.map((s) => [s.key, s]))
 
 // Broadcast entries not already shown as a personalized 📺 badge, so a game on
@@ -81,7 +142,7 @@ export function broadcastNotBadged(broadcast, watched) {
 export function watchableServices(broadcast, selectedKeys, game) {
   if (!broadcast?.length || !selectedKeys?.length) return []
   const selected = new Set(selectedKeys)
-  return SERVICE_CATALOG.filter((s) => selected.has(s.key) && s.match(broadcast, game))
+  return FULL_CATALOG.filter((s) => selected.has(s.key) && s.match(broadcast, game))
 }
 
 // Whether a game is a REGIONAL Sunday-afternoon broadcast rather than a single

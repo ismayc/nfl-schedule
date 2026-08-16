@@ -31,11 +31,24 @@ export async function mapLimit(items, limit, fn) {
   return out
 }
 
+// A browser-like User-Agent. ESPN's edge (Akamai) intermittently answers requests
+// carrying undici's default `node` UA with 403 — especially from cloud runner IP
+// ranges under an unattended refresh — so a real UA string makes the feed treat the
+// job like any other client. The `wnba/teams` call 403'd the whole run this way on
+// 2026-08-16 (run 31939735367).
+const HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+  Accept: '*/*',
+}
+
 // ESPN 500s at random under load. A refresh makes ~90 calls, so with the old
 // 3-try/1.5s policy a single blip failed the whole run — about once a week.
 //
-// Retry only what's worth retrying: a 5xx, a 429, or a network-level error. A 404
-// or a 400 is a real answer and fails immediately rather than sleeping 15s first.
+// Retry what's transient: a 5xx, a 429, a 403, or a network-level error. ESPN returns
+// 403 as a soft anti-bot throttle that clears on a moment's backoff, so it belongs with
+// the transient statuses rather than the real answers — a definitive 400/404/410 still
+// fails immediately rather than sleeping 15s first.
 export async function fetchRetry(url, tries = 5) {
   let lastErr
   for (let attempt = 0; attempt < tries; attempt++) {
@@ -43,14 +56,15 @@ export async function fetchRetry(url, tries = 5) {
 
     let res
     try {
-      res = await fetch(url)
+      res = await fetch(url, { headers: HEADERS })
     } catch (err) {
       lastErr = err // DNS, connection reset, timeout — always worth another go
       continue
     }
 
     if (res.ok) return res
-    if (res.status < 500 && res.status !== 429) throw new Error(`${url}\n  HTTP ${res.status}`)
+    if (res.status < 500 && res.status !== 429 && res.status !== 403)
+      throw new Error(`${url}\n  HTTP ${res.status}`)
     lastErr = new Error(`HTTP ${res.status}`)
   }
   throw new Error(`${url}\n  ${lastErr.message} — still failing after ${tries} attempts`)

@@ -17,7 +17,7 @@ export { sleep, backoffMs, CONCURRENCY, mapLimit, fetchRetry, getJson, getText }
 // against; a fresh runner does not escape it, and neither does a proxy pointed at the
 // same host. Diagnosed 2026-08-16, after a family-wide refresh outage; site.web.api
 // serves these route families with identical payloads (verified route by route across
-// both hosts). See docs/ESPN-PROXY.md. Do NOT "restore" the site.api host.
+// both hosts). See docs/ESPN-403.md. Do NOT "restore" the site.api host.
 export const SITE = 'https://site.web.api.espn.com/apis/site/v2/sports'
 export const CORE = 'https://site.web.api.espn.com/apis/v2/sports'
 export const WEB = 'https://site.web.api.espn.com/apis/common/v3/sports'

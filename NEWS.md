@@ -16,6 +16,12 @@ data/source updates, deployment). Newest day on top.
 - Nothing about the app changed — same data, same tests. The live score overlay was
   never affected, because it runs in your browser rather than in a datacenter.
 
+- **The new-season watch can no longer report success while it fails.** Its check
+  step piped the script through `tee`, and the exit status of a pipe is the last
+  command's — `tee` always succeeds — so when the script crashed the run still went
+  green, the outputs came back empty, and every step behind them skipped quietly.
+  Today's outage was hiding there. The step now runs under `pipefail`.
+
 ## 2026-08-15
 
 - **My services is ready for local & regional channels.** Ported from

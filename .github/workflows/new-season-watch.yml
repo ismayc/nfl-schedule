@@ -44,8 +44,14 @@ jobs:
           node-version: 22
 
       # Node built-ins only, so no install step.
+      # `shell: bash` for the pipefail it brings. GitHub's default is `bash -e`, whose
+      # exit status is the LAST command in a pipe — tee, which always succeeds — so a
+      # crash in the script left the step green, `released` empty, and every downstream
+      # step silently skipped. That hid a real outage on 2026-08-16: the fetch was 403ing
+      # and the watch reported success for it.
       - name: Check whether the next season is published
         id: check
+        shell: bash
         run: node scripts/check-new-season.mjs | tee -a "$GITHUB_OUTPUT"
 
       - name: Say what was found

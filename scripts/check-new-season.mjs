@@ -22,7 +22,9 @@
 import { getJson } from './lib/fetch.mjs'
 import { SEASON as COMMITTED_SEASON } from '../src/data/teams.js'
 
-const SITE = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl'
+// site.web.api, not site.api — the latter 403s every request from a cloud IP.
+// See the note in scripts/lib/espn.mjs.
+const SITE = 'https://site.web.api.espn.com/apis/site/v2/sports/football/nfl'
 
 const args = process.argv.slice(2)
 const SEASON = Number(args[args.indexOf('--season') + 1]) || COMMITTED_SEASON + 1

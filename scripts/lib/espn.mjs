@@ -10,8 +10,16 @@ import { getJson, mapLimit, CONCURRENCY } from './fetch.mjs'
 
 export { sleep, backoffMs, CONCURRENCY, mapLimit, fetchRetry, getJson, getText } from './fetch.mjs'
 
-export const SITE = 'https://site.api.espn.com/apis/site/v2/sports'
-export const CORE = 'https://site.api.espn.com/apis/v2/sports'
+// All three hosts are site.web.api, NOT site.api. ESPN's edge applies a
+// datacenter-egress block to site.api only: from a GitHub runner — or any cloud IP —
+// every site.api request answers 403, while the same path on site.web.api answers 200.
+// It is not the per-runner-IP block the refresh workflows were originally written
+// against; a fresh runner does not escape it, and neither does a proxy pointed at the
+// same host. Diagnosed 2026-08-16, after a family-wide refresh outage; site.web.api
+// serves these route families with identical payloads (verified route by route across
+// both hosts). See docs/ESPN-PROXY.md. Do NOT "restore" the site.api host.
+export const SITE = 'https://site.web.api.espn.com/apis/site/v2/sports'
+export const CORE = 'https://site.web.api.espn.com/apis/v2/sports'
 export const WEB = 'https://site.web.api.espn.com/apis/common/v3/sports'
 
 export const arg = (name, fallback) => {

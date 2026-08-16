@@ -4,6 +4,18 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-08-16
+
+- **The data scripts now fetch from `site.web.api.espn.com`.** ESPN's edge started
+  refusing `site.api.espn.com` for requests coming from datacenter IPs, which is
+  every unattended refresh — the sibling WNBA viewer's had been failing with
+  `HTTP 403` all day before the cause was found. The same URLs answer normally from
+  a home connection, so the block is on the host, not on us. Its sibling
+  `site.web.api` carries the identical routes with identical payloads and no block,
+  verified route by route.
+- Nothing about the app changed — same data, same tests. The live score overlay was
+  never affected, because it runs in your browser rather than in a datacenter.
+
 ## 2026-08-15
 
 - **My services is ready for local & regional channels.** Ported from

@@ -21,6 +21,11 @@ export { sleep, backoffMs, CONCURRENCY, mapLimit, fetchRetry, getJson, getText }
 export const SITE = 'https://site.web.api.espn.com/apis/site/v2/sports'
 export const CORE = 'https://site.web.api.espn.com/apis/v2/sports'
 export const WEB = 'https://site.web.api.espn.com/apis/common/v3/sports'
+// Distinct from CORE above, which is site.web.api's v2 (standings). This is ESPN's
+// separate core service, the only feed that says which teams are actually IN a league,
+// via conference membership (see fetchFranchiseIds). Not subject to the datacenter block
+// that took site.api out: the Premier League sibling has fetched it from a runner all along.
+export const SPORTS_CORE = 'https://sports.core.api.espn.com/v2/sports'
 
 export const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`)
@@ -40,10 +45,58 @@ export function monthRange(ym) {
   return `${y}${p}01-${y}${p}${last}`
 }
 
-export async function fetchTeams(espnPath) {
-  const d = await getJson(`${SITE}/${espnPath}/teams`)
-  return d.sports[0].leagues[0].teams
-    .map(({ team: t }) => ({
+// ESPN's team list for a season is NOT a franchise list. It also carries the exhibition
+// clubs a league's teams are scheduled to play: the NBA sibling's 2026-27 list picked up
+// "LON", the London Lions (id 134478), a British Basketball League side with a single
+// preseason game on file. Left in, such an entry lands in teams.js with no logo and no
+// colors, in no division, sitting in the team picker with zero games.
+//
+// A franchise is a team ESPN places in a CONFERENCE, which is what group membership
+// records and what the exhibition clubs lack. It is the same signal fetchGroups already
+// leans on when it warns about ungrouped teams, asked earlier and made decisive.
+// Verified against the live feed: the NFL's two conferences yield exactly the 32
+// committed franchises.
+//
+// `espnPath` is "football/nfl"; the core service wants "football/leagues/nfl".
+export async function fetchFranchiseIds(espnPath, season) {
+  const [sport, league] = espnPath.split('/')
+  const groups = await getJson(
+    `${SPORTS_CORE}/${sport}/leagues/${league}/seasons/${season}/types/2/groups?limit=50`
+  )
+  const ids = new Set()
+  for (const item of groups.items || []) {
+    // ESPN hands back `http://` refs; keep the transport encrypted.
+    const group = await getJson(item.$ref.replace(/^http:/, 'https:'))
+    const ref = group.teams?.$ref
+    if (!ref) continue
+    const url = new URL(ref.replace(/^http:/, 'https:'))
+    url.searchParams.set('limit', '50')
+    for (const t of (await getJson(url.href)).items || []) {
+      ids.add(t.$ref.match(/\/teams\/(\d+)/)?.[1])
+    }
+  }
+  return ids
+}
+
+// `season` is optional: omit it and the franchise filter is skipped, which is what the
+// human-run fixture builder and history fetch want. The unattended refresh passes it.
+export async function fetchTeams(espnPath, season) {
+  const [d, franchises] = await Promise.all([
+    getJson(`${SITE}/${espnPath}/teams`),
+    season ? fetchFranchiseIds(espnPath, season) : new Set(),
+  ])
+  const listed = d.sports[0].leagues[0].teams.map(({ team: t }) => t)
+  // An empty set means either no season was asked for, or the group feed is unusable.
+  // Filtering on it would drop every team and report the wrong problem, so leave the
+  // list alone; the caller's roster guard is the backstop.
+  if (season && !franchises.size)
+    console.warn('  ⚠ no conference membership available; not filtering')
+  const teams = franchises.size ? listed.filter((t) => franchises.has(t.id)) : listed
+  const dropped = listed.filter((t) => !teams.includes(t))
+  if (dropped.length)
+    console.log(`  ignored ${dropped.length} non-franchise: ${dropped.map((t) => t.abbreviation).join(' ')}`)
+  return teams
+    .map((t) => ({
       id: t.id,
       abbr: t.abbreviation,
       slug: (t.slug || t.abbreviation).toLowerCase(),

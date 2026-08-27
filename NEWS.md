@@ -4,6 +4,19 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-08-27
+
+- **The refresh now ignores teams that are not NFL franchises.** ESPN's team list for a
+  season is not a franchise list: it also carries the exhibition clubs a league's teams
+  are scheduled to play. The NBA sibling's 2026-27 list picked up "LON", the London
+  Lions, a British Basketball League side with a single preseason game on file, which
+  would have landed in the data as an extra team in no division, sitting in the team
+  picker with zero games. A franchise is a team ESPN places in a conference, which is the
+  same signal the ungrouped-teams warning already leaned on, now asked earlier and made
+  decisive. Nothing is filtered here today: verified against the live feed, the two
+  conferences yield exactly the 32 committed franchises across 8 divisions, and the full
+  272-game season fetches unchanged.
+
 ## 2026-08-26
 
 - **The refresh now checks the team list before it fetches anything else.** ESPN broke

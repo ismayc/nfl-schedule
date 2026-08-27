@@ -442,7 +442,7 @@ async function keepKnownBroadcasts(games, file) {
 
 async function main() {
   console.log(`Fetching ${SEASON} NFL teams…`)
-  const teams = await fetchTeams(ESPN_PATH)
+  const teams = await fetchTeams(ESPN_PATH, SEASON)
   console.log(`  ${teams.length} teams`)
   guardAgainstRosterChange(teams)
 

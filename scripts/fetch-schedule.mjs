@@ -24,7 +24,7 @@ import {
   monthRange,
   banner,
 } from './lib/espn.mjs'
-import { SEASON as COMMITTED_SEASON } from '../src/data/teams.js'
+import { SEASON as COMMITTED_SEASON, TEAMS as COMMITTED_TEAMS } from '../src/data/teams.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ESPN_PATH = 'football/nfl'
@@ -372,6 +372,40 @@ async function guardAgainstShrink(games, file, label) {
   }
 }
 
+// The schedule guard above is a floor, because games legitimately come and go: one
+// cancellation is not a broken fetch. A franchise list is not like that. The league has
+// the teams it has, so ANY difference from what is committed means either the feed is
+// wrong or the league changed, and only a human can tell those apart.
+//
+// The floor cannot see this failure. On 2026-08-26 ESPN's 2026-27 team list for the NBA
+// sibling dropped from 30 teams to 13, and grew a "LON" (the London Lions, a preseason
+// exhibition opponent, not a franchise). That truncation happened to gut the schedule
+// far enough to trip the 0.9 floor, but it need not have: lose two teams out of thirty
+// and the remaining games still clear the floor comfortably, so a milder ESPN edit would
+// have quietly published a roster missing two franchises. The NFL plays games in London,
+// Berlin, and Sao Paulo, so a stray venue-shaped "team" landing in this feed is not a
+// hypothetical here.
+//
+// Every team's schedule, logo, conference, and division hangs off this list, so it gets
+// checked exactly, and checked first, before every per-team request the run would
+// otherwise waste. `--allow-roster-change` is the override for a real relocation.
+function guardAgainstRosterChange(teams) {
+  if (args.includes('--allow-roster-change')) return
+  const committed = new Set(COMMITTED_TEAMS.map((t) => t.abbr))
+  if (!committed.size) return // first run: nothing to compare against
+  const fetched = new Set(teams.map((t) => t.abbr))
+  const vanished = [...committed].filter((a) => !fetched.has(a))
+  const appeared = [...fetched].filter((a) => !committed.has(a))
+  if (!vanished.length && !appeared.length) return
+  throw new Error(
+    `the team list changed from ${committed.size} teams to ${fetched.size}.\n` +
+      (vanished.length ? `  gone:  ${vanished.join(' ')}\n` : '') +
+      (appeared.length ? `  new:   ${appeared.join(' ')}\n` : '') +
+      `  Every schedule, logo, and division hangs off this list, so nothing was written.\n` +
+      `  Re-run; pass --allow-roster-change if the league really changed (relocation, say).`
+  )
+}
+
 // ESPN intermittently drops `broadcast` from games that have already been played, then
 // restores it a few hours later. Left alone, the twice-daily refresh commits that flap
 // back and forth forever (it did exactly that in the NBA sibling on 2026-07-27). A
@@ -410,6 +444,7 @@ async function main() {
   console.log(`Fetching ${SEASON} NFL teams…`)
   const teams = await fetchTeams(ESPN_PATH)
   console.log(`  ${teams.length} teams`)
+  guardAgainstRosterChange(teams)
 
   console.log('Fetching conference/division membership…')
   const { conf, div } = await fetchGroups()

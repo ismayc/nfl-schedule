@@ -4,6 +4,22 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-08-26
+
+- **The refresh now checks the team list before it fetches anything else.** ESPN broke
+  the NBA sibling today: its 2026-27 team list dropped from 30 teams to 13, and grew a
+  "LON" (the London Lions, a preseason exhibition opponent, not a franchise). That was
+  caught only downstream, by the schedule shrink guard, and only by luck: the shrink
+  guard is a floor at 90%, because cancelled games legitimately disappear, so losing two
+  teams would have cleared it and quietly published a roster missing two franchises. A
+  franchise list does not work that way, so it is now compared exactly against what is
+  committed, and any difference stops the run and names the teams that came and went.
+  The NFL plays in London, Berlin, and Sao Paulo, so a stray venue-shaped "team" landing
+  in this feed is not hypothetical here. `--allow-roster-change` is the override for a
+  real relocation.
+- No app or data changes: verified against the live feed, which still returns all 32
+  teams across 8 divisions and the full 272-game season.
+
 ## 2026-08-16
 
 - **The data scripts now fetch from `site.web.api.espn.com`.** ESPN's edge started

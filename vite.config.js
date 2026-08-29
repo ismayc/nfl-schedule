@@ -16,6 +16,13 @@ export default defineConfig({
     // CI's shared runners, so the 5s default test timeout is too tight there.
     testTimeout: 30000,
     hookTimeout: 30000,
+    // Pin the suite's timezone so any test asserting a day heading, or what counts
+    // as "today", is runner-independent. UTC is what these tests were already
+    // written against: CI's runners sit in UTC, so this changes nothing there. What
+    // it fixes is the LOCAL run, which until now needed an explicit `TZ=UTC` prefix
+    // and failed in a confusing way without one. test/guards.test.js asserts the pin
+    // so it cannot be dropped unnoticed on an already-UTC runner.
+    env: { TZ: 'UTC' },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary', 'json'],

@@ -5,7 +5,7 @@
 // CORS-open — no backend, no .env. The endpoint path is the only league-specific bit.
 import { LEAGUE } from '../config/league.js'
 
-const SCOREBOARD = `https://site.api.espn.com/apis/site/v2/sports/${LEAGUE.espnPath}/scoreboard`
+const SCOREBOARD = `https://site.web.api.espn.com/apis/site/v2/sports/${LEAGUE.espnPath}/scoreboard`
 
 const yyyymmdd = (d) =>
   `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`

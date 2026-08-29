@@ -18,6 +18,15 @@ data/source updates, deployment). Newest day on top.
   must keep their do-not-edit banner, since a hand edit to one is silently reverted by the
   next refresh run. Each guard was checked by reintroducing the bug it describes and
   confirming it fails.
+- **Fixed: a concurrent push to main threw away the whole nightly refresh.** The refresh
+  job checks main out, spends a couple of minutes rebuilding its committed data from ESPN,
+  tests the result, then pushes. The push was a bare `git push`, so if anything else landed
+  on main in that window it died with `! [rejected] main -> main (fetch first)` and the
+  freshly fetched data was discarded until the next scheduled run. It happened to the WNBA
+  viewer today, where a hand push landed one second ahead of the bot. Every refresh workflow
+  in the family had the same bare push. The step now rebases its single data commit onto
+  whatever arrived and retries, up to three times. A genuine content conflict still fails
+  the run rather than force-pushing over someone's work.
 
 ## 2026-08-27
 

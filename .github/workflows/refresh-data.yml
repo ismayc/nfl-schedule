@@ -81,7 +81,26 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -- src/data public/logos
           git commit -m "Refresh schedule, results, and player stats from ESPN"
-          git push
+          # main can move between this job's checkout and its push: a human push, or a
+          # sibling workflow landing its own commit. A bare `git push` then dies with
+          # "! [rejected] main -> main (fetch first)" and the whole refresh is thrown
+          # away until the next scheduled run. That happened to the WNBA viewer on
+          # 2026-08-29, when a hand push landed one second before this step. So rebase
+          # our single data commit onto whatever arrived and try again. Rebasing is safe
+          # here because the commit touches only generated paths that nothing else
+          # writes; a real conflict is not resolvable unattended, so we let it fail
+          # loudly instead of forcing.
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "pushed on attempt $attempt"
+              exit 0
+            fi
+            echo "::warning::push rejected, rebasing onto origin/main (attempt $attempt)"
+            git fetch --unshallow origin main 2>/dev/null || git fetch origin main
+            git rebase origin/main
+          done
+          echo "::error::could not push the refreshed data after 3 rebase attempts"
+          exit 1
 
       - name: Build the site
         if: steps.diff.outputs.changed == 'true'

@@ -12,6 +12,10 @@
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://the-nfl-schedule.netlify.app/" />
+    <!-- The canonical host, stated explicitly rather than left implicit in og:url.
+         Every other viewer in the family declares one; these two did not, so a
+         crawler had to infer it. Keep it equal to og:url. -->
+    <link rel="canonical" href="https://the-nfl-schedule.netlify.app/" />
     <meta property="og:title" content="The NFL Schedule" />
     <meta
       property="og:description"

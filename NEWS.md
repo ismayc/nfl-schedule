@@ -4,6 +4,20 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-08-30
+
+- **Production is now checked after every deploy.** Nothing in this repo ever fetched an
+  absolute production URL: the build, the tests and CI all work on local files, so a host
+  that was never created, a URL quietly pointing at a sibling app's site, or a broken
+  calendar feed were invisible to the whole gate. A new `smoke` job runs
+  `scripts/smoke-prod.mjs` after the deploy and checks the deployed site itself: every
+  link-preview tag present and answering 200, the social image actually an image rather
+  than the single-page-app catch-all, `coverage.json` readable, and the calendar feed real
+  iCalendar with events in it. It reports rather than blocks, because Netlify publishes on
+  its own trigger and a red run can just mean "not published yet".
+- **Added a `<link rel="canonical">`.** Every other viewer in the family declares one and
+  this app did not, leaving crawlers to infer it from `og:url`. It names the same host.
+
 ## 2026-08-29
 
 - **Repo-level guards now run in the test suite.** New `test/guards.test.js`, ported from

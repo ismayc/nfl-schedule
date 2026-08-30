@@ -172,14 +172,40 @@ function checkFeedAgainstSchedule(ics) {
   // disagree about a game they both hold. It shows up as an unmatched instant
   // on a DAY the schedule does have games for.
   const days = new Set([...committed].map((t) => new Date(t).toISOString().slice(0, 10)))
-  const shifted = unmatched.filter((iso) => days.has(iso.slice(0, 10)))
+  let shifted = unmatched.filter((iso) => days.has(iso.slice(0, 10)))
   const announced = unmatched.length - shifted.length
+
+  // Known, explained divergences do not fail the run.
+  //
+  // The one that keeps recurring: when a game is DELAYED, the committed schedule
+  // records the time it actually started and ESPN's scoreboard keeps the time it
+  // was scheduled for. The app is right to show the real start, so this is not a
+  // bug to fix in the data, but it is also not something to leave permanently
+  // red, because a check that is always failing is a check nobody reads.
+  //
+  // Each entry must say WHY. An unexplained instant does not belong here; a real
+  // upstream error belongs in the repo's own correction table instead, the way
+  // FIBA's KNOWN_ESPN_TIME_BUGS handles a genuinely wrong ESPN record.
+  let knownCount = 0
+  try {
+    const known = JSON.parse(read('scripts/smoke-known.json') || '{}')
+    const allowed = new Set((known.feedStartMismatch || []).filter((e) => e.why).map((e) => e.iso))
+    const before = shifted.length
+    shifted = shifted.filter((iso) => !allowed.has(iso))
+    knownCount = before - shifted.length
+  } catch {
+    record(false, 'scripts/smoke-known.json', 'present but not valid JSON')
+  }
+
+  const notes = []
+  if (knownCount) notes.push(`${knownCount} known and explained`)
+  if (announced) notes.push(`${announced} on days the schedule has no games for, treated as newly announced`)
   record(
     shifted.length === 0,
     'feed agrees with the committed schedule',
     shifted.length
       ? `${shifted.length} start(s) the schedule does not have on a day it does cover: ${shifted.join(', ')}`
-      : `all starts match${announced ? ` (${announced} on days the schedule has no games for, treated as newly announced)` : ''}`,
+      : `all starts match${notes.length ? ` (${notes.join('; ')})` : ''}`,
   )
 }
 

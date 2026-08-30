@@ -17,6 +17,13 @@ data/source updates, deployment). Newest day on top.
   its own trigger and a red run can just mean "not published yet".
 - **Added a `<link rel="canonical">`.** Every other viewer in the family declares one and
   this app did not, leaving crawlers to infer it from `og:url`. It names the same host.
+- **The calendar function is inside the coverage gate now.** `coverage.include` was
+  `src/**`, so the `webcal://` subscription endpoint, real shipped code that a
+  subscriber's calendar hits directly, was measured by nothing while the badge read
+  100%. It is now covered, and at 100% like everything else.
+- It had **no tests at all** before today. The new ones cover what actually matters
+  there: that the endpoint still serves a valid calendar when the live feed is
+  unreachable, rather than failing the whole subscription.
 
 ## 2026-08-29
 

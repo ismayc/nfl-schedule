@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, within, fireEvent, cleanup } from '@testing-library/react'
 import WeekView from '../src/components/WeekView.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
-import { GAMES } from '../src/data/schedule.js'
+import { GAMES_2026_PRESEASON as GAMES } from './fixtures/preseason-2026.js'
 import { GAMES_2025 } from './fixtures/season-2025.js'
 
 // The Week view is a per-week calendar grid: day columns (Thu · Sat · Sun · Mon), with the

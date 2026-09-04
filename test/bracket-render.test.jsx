@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import Bracket from '../src/components/Bracket.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
 import { GAMES_2025 } from './fixtures/season-2025.js'
-import { GAMES } from '../src/data/schedule.js'
+import { GAMES_2026_PRESEASON } from './fixtures/preseason-2026.js'
 
 const TZ = 'America/New_York'
 
@@ -15,7 +15,7 @@ beforeEach(() => localStorage.clear())
 
 describe('Bracket — before the season starts', () => {
   it('shows the placeholder card on the empty 2026 snapshot', () => {
-    render(<Bracket games={GAMES} tz={TZ} />)
+    render(<Bracket games={GAMES_2026_PRESEASON} tz={TZ} />)
     expect(screen.getByText(/bracket isn't set yet/i)).toBeInTheDocument()
     expect(screen.queryByText('AFC')).not.toBeInTheDocument()
   })

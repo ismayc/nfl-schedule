@@ -4,6 +4,39 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-04
+
+- **The suite no longer assumes the season hasn't kicked off.** The FIBA viewer's
+  tournament started today and its refresh workflow went red on the first data change:
+  48 tests, none of them about basketball. Every one had been asserting against the
+  committed schedule, which the refresh rewrites several times a day, so they were
+  really asserting "nothing has been played yet". Simulating week 1 here (adding a score
+  to the 16 opening games and running the gate) reproduced the same thing: **10 tests
+  across 8 files**, six days before the real opener on September 10. A fully played
+  regular season broke 6 more, including the live-overlay tests, which mark `GAMES[0]`
+  in progress and cannot do that to a game already carrying a final score.
+- **`test/fixtures/preseason-2026.js`** is the fix: a frozen, never-regenerated copy of
+  the 272-game 2026 schedule as committed before kickoff. It is the bookend to
+  `season-2025.js`, which was already doing this job for a *completed* season. The
+  "empty season" tests now say so with a fixture instead of borrowing the calendar.
+  `app.test.jsx` and `whenfilter.cov.test.jsx` mount App, which reads the schedule
+  module directly, so those two `vi.mock` it to the frozen board.
+- **`test/schedule-data.test.js`** is new, and closes the hole the above would otherwise
+  open. With eight files moved off the live data, nothing in the gate was checking the
+  regenerated schedule at all. It asserts what is true of a correct NFL schedule in
+  every state the season passes through, so it holds on opening day and in February
+  alike: 272 regular-season games, weeks 1 to 18, every team playing 17 with exactly one
+  bye, unique ids, kickoffs inside the league year, scores as two finite numbers, no
+  tied postseason game, overtime only on a played game, no score on a dead slot, and
+  postseason rounds the bracket can place. It is deliberately tolerant of a postseason
+  game ESPN has published but not yet captioned, and strict once all 13 exist. Each
+  assertion was checked against the real 2025 season and against corrupted copies (a
+  dropped game, a duplicated id, a tied Super Bowl, a stray overtime flag, a mislabeled
+  round, a team booked twice in one week); all are rejected.
+- Verified by running the full coverage gate three ways: against the real committed
+  data, against a simulated week 1, and against a simulated full regular season. 673
+  tests and 100% coverage in all three.
+
 ## 2026-08-30
 
 - **Production is now checked after every deploy.** Nothing in this repo ever fetched an

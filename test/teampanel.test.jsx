@@ -9,7 +9,7 @@ vi.mock('../src/data/leaders.js', () => ({ PLAYERS: H.players }))
 
 import TeamPanel from '../src/components/TeamPanel.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
-import { GAMES } from '../src/data/schedule.js'
+import { GAMES_2026_PRESEASON as GAMES } from './fixtures/preseason-2026.js'
 import { GAMES_2025 } from './fixtures/season-2025.js'
 import { HISTORY } from '../src/data/history.js'
 

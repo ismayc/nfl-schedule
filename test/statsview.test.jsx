@@ -10,7 +10,7 @@ const H = vi.hoisted(() => ({ players: [] }))
 vi.mock('../src/data/leaders.js', () => ({ PLAYERS: H.players }))
 
 import StatsView from '../src/components/StatsView.jsx'
-import { GAMES } from '../src/data/schedule.js'
+import { GAMES_2026_PRESEASON as GAMES } from './fixtures/preseason-2026.js'
 import { GAMES_2025 } from './fixtures/season-2025.js'
 
 const SYNTHETIC = [

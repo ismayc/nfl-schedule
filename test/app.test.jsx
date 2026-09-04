@@ -1,14 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, within, waitFor, cleanup, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+// These tests need a board with nothing played: the live-overlay cases mark GAMES[0]
+// in progress, and the overlay correctly refuses to do that to a game that already
+// carries a committed final score. src/data/schedule.js stops being that board the
+// moment week 1 is over, so App gets the frozen preseason copy instead.
+vi.mock('../src/data/schedule.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  GAMES: (await import('./fixtures/preseason-2026.js')).GAMES_2026_PRESEASON,
+}))
 import App from '../src/App.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
 import { ServicesProvider } from '../src/context/services.jsx'
 import { VIEWS } from '../src/utils/urlState.js'
-import { GAMES } from '../src/data/schedule.js'
+import { GAMES_2026_PRESEASON as GAMES } from './fixtures/preseason-2026.js'
 
 // App is the wiring layer: polling, filters, URL state, and which view is on screen.
-// These integration tests drive that wiring against the committed 2026 snapshot (all
+// These integration tests drive that wiring against the frozen preseason snapshot (all
 // upcoming games, empty standings), re-stubbing fetch where the live overlay matters.
 
 const renderApp = () => render(

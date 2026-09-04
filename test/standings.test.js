@@ -13,7 +13,7 @@ import {
   playoffPicture,
   DIVISIONS,
 } from '../src/utils/standings.js'
-import { GAMES as GAMES_2026 } from '../src/data/schedule.js'
+import { GAMES_2026_PRESEASON as GAMES_2026 } from './fixtures/preseason-2026.js'
 
 // Real completed season as the truth fixture (PLAYBOOK §7): it carries the edge cases —
 // ties, identical-record tiebreaks — a synthetic fixture wouldn't reproduce.

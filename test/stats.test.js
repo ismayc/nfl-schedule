@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { GAMES_2025 } from './fixtures/season-2025.js'
-import { GAMES } from '../src/data/schedule.js'
+import { GAMES_2026_PRESEASON as GAMES } from './fixtures/preseason-2026.js'
 import {
   seasonTotals,
   teamScoring,

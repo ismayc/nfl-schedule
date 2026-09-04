@@ -3,7 +3,7 @@ import { render, screen, within, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import StandingsView from '../src/components/StandingsView.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
-import { GAMES } from '../src/data/schedule.js'
+import { GAMES_2026_PRESEASON as GAMES } from './fixtures/preseason-2026.js'
 import { GAMES_2025 } from './fixtures/season-2025.js'
 
 afterEach(cleanup)

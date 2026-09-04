@@ -2,6 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 vi.mock('../src/services/summary.js', () => ({ fetchGameSummary: () => Promise.resolve(null) }))
+// The contrast this file asserts (Upcoming keeps cards, Finished empties the list)
+// only holds on a season with nothing played, and App reads the committed schedule
+// directly. Serve it the frozen preseason board rather than the live one, which the
+// refresh starts filling in the moment week 1 is over.
+vi.mock('../src/data/schedule.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  GAMES: (await import('./fixtures/preseason-2026.js')).GAMES_2026_PRESEASON,
+}))
 import App from '../src/App.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
 import { ServicesProvider } from '../src/context/services.jsx'

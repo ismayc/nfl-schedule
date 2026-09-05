@@ -7,16 +7,35 @@ import { dayKey, todayKey } from '../src/utils/time.js'
 import { GAMES_2025 } from './fixtures/season-2025.js'
 
 afterEach(cleanup)
+
+// Pin the clock for the whole file.
+//
+// ScheduleView opens on the week containing today, so every test below that
+// asserts on the 2026 fixture season is really asserting "today is still before
+// the opener". That stops being true on September 10, 2026, and the fixtures do
+// not move. The instant chosen is a few days before that opener, which is the
+// state every fixture here was written against.
+//
+// Verified by rehearsal: green on September 6, three failures on September 15,
+// with the committed schedule untouched.
+//
+// Only Date is faked, so real timers and waitFor keep working.
+const NOW = new Date('2026-09-06T12:00:00.000Z')
+
 // jsdom has no layout engine, so scrollIntoView is undefined by default.
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(NOW)
   Element.prototype.scrollIntoView = vi.fn()
 })
 
+afterEach(() => vi.useRealTimers())
+
 const TZ = 'America/New_York'
-// tip = now, so the game buckets into the viewer's "today" in any zone.
+// tip = the pinned now, so the game buckets into the viewer's "today" in any zone.
 const todayGame = {
   id: 't1',
-  tip: new Date().toISOString(),
+  tip: NOW.toISOString(),
   seasonType: 'regular',
   week: 1,
   home: 'KC',

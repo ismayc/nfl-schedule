@@ -40,7 +40,21 @@ const search = () => new URLSearchParams(window.location.search)
 // team/followed filter is already active on load; open it before reaching inside.
 const openFilters = () => userEvent.click(screen.getByRole('button', { name: /⚙ Filters/ }))
 
+// Pin the clock as well as the board.
+//
+// Freezing the preseason schedule above is only half the job. What the schedule
+// shows is a comparison against Date.now(), so once the real clock passes the
+// 2026 season the frozen games are all in the past and the card count these
+// tests assert on drops to zero. Verified by rehearsal: green today, six of
+// these failing from February 2027 on, with the fixture untouched.
+//
+// Only Date is faked here, so the tests below that drive setInterval install
+// their own full fake timers as before.
+const NOW = new Date('2026-09-06T12:00:00.000Z')
+
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(NOW)
   Element.prototype.scrollIntoView = vi.fn()
   localStorage.clear()
   window.history.replaceState(null, '', '/')

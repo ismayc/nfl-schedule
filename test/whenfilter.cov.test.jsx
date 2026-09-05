@@ -31,7 +31,18 @@ const mount = async () => {
   return utils
 }
 
+// Pin the clock as well as the board.
+//
+// Freezing the preseason schedule above is only half the job: "upcoming" is a
+// comparison against Date.now(), so once the real clock passes the 2026 opener
+// every frozen game buckets as finished and the contrast this file asserts
+// inverts. Verified by rehearsal: green on September 6, this file's App test
+// failing from September 15 on, with the fixture untouched.
+//
+// Only Date is faked, so userEvent's timers and waitFor keep working.
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(NOW)
   Element.prototype.scrollIntoView = vi.fn()
   localStorage.clear()
   window.history.replaceState(null, '', '/')
@@ -39,6 +50,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })

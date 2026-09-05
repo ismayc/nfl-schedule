@@ -4,6 +4,24 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-05
+
+- **Freezing the board was only half the job: the clock had to be pinned too.** Yesterday's
+  fix froze the *data* three files read, via `test/fixtures/preseason-2026.js`. It did
+  nothing about the *wall clock* they also read, and the two fail in different ways. What
+  the schedule shows is a comparison against `Date.now()`, so a frozen 2026 board still
+  slides into the past as the calendar moves: `app.test.jsx` asserts a card count that
+  drops to zero, `whenfilter.cov.test.jsx` asserts that "Upcoming" keeps games and
+  "Finished" empties the list, and that contrast inverts outright.
+- **Found by rehearsal, not by reading.** A harness shifts `Date` to a chosen instant and
+  runs the full coverage gate with the committed schedule untouched. Against this repo it
+  found **3 tests failing from September 15** (five days after the real opener, which is
+  September 10) and **11 by February 2027**. None of them would have had a commit behind
+  them; the calendar alone would have turned the refresh workflow red.
+- **All three files now pin the clock for the whole file**, to an instant a few days before
+  the opener, which is the state every fixture in them was written against. Re-rehearsed
+  green at six dates from September 6, 2026 through January 2028.
+
 ## 2026-09-04
 
 - **The suite no longer assumes the season hasn't kicked off.** The FIBA viewer's

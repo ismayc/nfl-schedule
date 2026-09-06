@@ -77,6 +77,97 @@ jobs:
           fi
           echo "OK — scripts/ depends only on Node built-ins"
 
+  # REHEARSALS. The `test` job answers "does the suite pass against today's data on
+  # today's date", which is a smaller claim than it looks: every viewer reads two moving
+  # things, a snapshot the refresh workflow rewrites twice a day and Date.now(). The two
+  # jobs below ask the questions that actually matter, at the moment a human is at the
+  # keyboard rather than at 5am on a cron.
+  #
+  # Neither is a `needs` of deploy, on purpose. Both go red on the RUN, which is the
+  # signal, but a Sunday calendar rollover or an ESPN roster hiccup must never hold a
+  # hotfix deploy hostage.
+
+  # Data-state rehearsal: fetch what the NEXT refresh would fetch and run the gate on
+  # it. This is the only check that would have caught 2026-09-06, when the first week-1
+  # refresh failed on two tests asserting the player table was empty; a week-1
+  # rehearsal two days earlier had flagged them and nothing forced the fix. Same
+  # three-way split as refresh-data.yml: a fetch that does not land is a warning, a red
+  # gate is a failure. Nothing here is ever committed.
+  refresh-rehearsal:
+    name: Gate against the next refresh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Fetch what the next refresh would fetch
+        id: fetch
+        continue-on-error: true
+        run: node scripts/fetch-schedule.mjs
+      - name: Explain a fetch that did not land
+        if: steps.fetch.outcome == 'failure'
+        run: |
+          echo "::warning::could not fetch live data, so the next-refresh gate was not run. This is not a test failure."
+          echo "Fetch did not land; next-refresh gate skipped." >> "$GITHUB_STEP_SUMMARY"
+      - name: Anything to rehearse?
+        id: diff
+        if: steps.fetch.outcome == 'success'
+        run: |
+          if git diff --quiet -- src/data public/logos; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "The next refresh would change nothing; the main suite already covers this state." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            { echo "### The next refresh would change"; echo '```'; git diff --stat -- src/data public/logos; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      # The SAME gate the refresh workflow runs, so a pass here means that run will pass.
+      - name: Run the gate against it
+        if: steps.diff.outputs.changed == 'true'
+        shell: bash
+        run: |
+          npm ci
+          npm run coverage:badge
+
+  # Clock rehearsal: the suite at seven future instants with the committed data
+  # untouched. What it finds is clock rot and nothing else: a week view that opens on
+  # the calendar week containing today, an "upcoming" comparison against Date.now(), a
+  # countdown branch that goes unreachable once its fixture's tip is in the past. The
+  # tool lives in the meta repo and reads a sibling checkout beside it, so the layout
+  # here mirrors the family container on a laptop. See rehearse-clock.mjs for the why.
+  rehearse-clock:
+    name: Rehearse the clock
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: the-nfl-schedule
+      - uses: actions/checkout@v6
+        with:
+          repository: ismayc/sports-viewer-meta
+          path: sports-viewer-meta
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: the-nfl-schedule/package-lock.json
+      - run: npm ci
+        working-directory: the-nfl-schedule
+      # `shell: bash` for the pipefail, or tee's exit status would report a red
+      # rehearsal as green.
+      - name: Rehearse
+        shell: bash
+        run: node sports-viewer-meta/scripts/rehearse-clock.mjs --repo the-nfl-schedule | tee rehearsal.txt
+      - name: Keep the result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rehearsal-the-nfl-schedule
+          path: rehearsal.txt
+          if-no-files-found: warn
+          retention-days: 14
+
   # Check the DEPLOYED site, which nothing else in this repo ever does: the build,
   # the tests and the jobs above all work on local files, so a dead host, a URL
   # pointing at a sibling's site, or a calendar feed that disagrees with the

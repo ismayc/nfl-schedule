@@ -6,6 +6,21 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-09-06
 
+- **A red refresh now says which of three things it means.** Fourteen days of Refresh
+  data failures across the family sorted into a fetch that did not land (ESPN 5xx, or the
+  roster guard correctly refusing a truncated team list; the site is fine), a red gate (a
+  test asserted a season state the data moved past; the site is stale), and a push race.
+  All three used to send the same email. The fetch now retries the whole run three times,
+  five then ten minutes apart, and a fetch that still fails is a warning on a green job
+  rather than a failure, unless no data has landed for 72 hours, in which case one issue
+  opens. A red gate stays red but files one deduped issue naming the failing tests. Both
+  issues close themselves on the next successful commit.
+- **Two rehearsals now run in CI on every push.** `Gate against the next refresh` fetches
+  what the next refresh would fetch and runs the coverage gate against it, which is the
+  only check that would have caught this morning's break at the keyboard instead of on
+  the cron. `Rehearse the clock` runs the suite at seven future instants with the data
+  untouched, using the meta repo's tool. Both go red on the run and neither blocks the
+  deploy, so a calendar rollover cannot hold a hotfix hostage.
 - **Week 1 stats un-froze the site, then two tests re-froze it.** The first refresh with
   real player stats (run 34034407902, 12:52 UTC) failed the gate on the two tests named
   "defaults to the committed (empty) player table", which asserted `toEqual([])` against

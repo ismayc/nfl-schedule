@@ -4,6 +4,22 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-05 (later)
+
+- **The visual identity is now the family's results-board system.** The old look was a set
+  of defaults rather than decisions: rounded cards floating on a radial gradient, one
+  accent spent equally on a filter chip and a live badge, and system-ui at a single width.
+  Built first in the FIBA sibling and rolled out here.
+- **Type.** One family, Archivo, loaded as a variable font on both axes and used at two
+  extremes: expanded and heavy for every numeral and heading, normal for text. All figures
+  are tabular, so columns line up.
+- **Rows, not cards.** A day is a block: a band naming the day over a rule, then its games
+  as ruled rows sharing one left edge, each led by a scoreboard rail carrying the tip-off
+  in the viewer's own timezone.
+- **Color is information again.** This league's hue stays as the accent and is spent only
+  on what is happening now. A structural blue carries day bands. The view switch became
+  tabs on the masthead rule, and a grab-bag of corner radii became one.
+
 ## 2026-09-05
 
 - **Freezing the board was only half the job: the clock had to be pinned too.** Yesterday's

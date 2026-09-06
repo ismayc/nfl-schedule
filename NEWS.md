@@ -4,6 +4,19 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-06
+
+- **Week 1 stats un-froze the site, then two tests re-froze it.** The first refresh with
+  real player stats (run 34034407902, 12:52 UTC) failed the gate on the two tests named
+  "defaults to the committed (empty) player table", which asserted `toEqual([])` against
+  the live `PLAYERS` module. That was true in August and false the moment week 1 was
+  played, so nothing was committed and the site kept serving preseason. Both now derive
+  their expectations from the committed table (every row belongs to the table, ranks and
+  sort order hold, KC's roster count matches) and pass on the empty August table and the
+  full September one. The week-1 data ships in the same commit. The class is documented
+  in the family memory as `refresh-stable-tests`; the September 4 rehearsal had flagged
+  ten NFL tests, of which these two were the ones still unfixed.
+
 ## 2026-09-05 (later)
 
 - **The visual identity is now the family's results-board system.** The old look was a set

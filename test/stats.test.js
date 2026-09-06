@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { GAMES_2025 } from './fixtures/season-2025.js'
 import { GAMES_2026_PRESEASON as GAMES } from './fixtures/preseason-2026.js'
+// The LIVE committed table, on purpose: the two default-argument tests below check the
+// derived leaderboard against it rather than against a frozen snapshot.
+import { PLAYERS } from '../src/data/leaders.js'
 import {
   seasonTotals,
   teamScoring,
@@ -144,8 +147,21 @@ describe('leaderboard', () => {
     expect(rows).toHaveLength(4)
   })
 
-  it('defaults to the committed (empty) player table', () => {
-    expect(leaderboard('passYds')).toEqual([])
+  // Called with no `players` so the default-parameter branch stays covered. What it
+  // asserts is derived from the committed table rather than a snapshot of it: this
+  // read `toEqual([])` until week 1 (September 6, 2026), when the first refresh with
+  // real stats failed the gate and froze the site until it was rewritten. A table
+  // that is empty in August and full in September satisfies every line below.
+  it('defaults to the committed player table', () => {
+    const rows = leaderboard('passYds')
+    const eligible = PLAYERS.filter((p) => p.passYds != null)
+    expect(rows.length).toBeLessThanOrEqual(Math.max(eligible.length, 0))
+    if (eligible.length > 0) expect(rows[0].rank).toBe(1)
+    for (const [i, r] of rows.entries()) {
+      expect(PLAYERS.some((p) => p.id === r.id)).toBe(true)
+      expect(r.value).toBe(r.passYds)
+      if (i > 0) expect(r.value).toBeLessThanOrEqual(rows[i - 1].value)
+    }
   })
 })
 
@@ -164,7 +180,15 @@ describe('playersByTeam', () => {
     expect(roster.map((p) => p.name)).toEqual(['Bravo', 'Echo', 'Alpha'])
   })
 
-  it('defaults to the committed (empty) player table', () => {
-    expect(playersByTeam('KC')).toEqual([])
+  // Same shape as the leaderboard test above: no `players` argument, expectations
+  // derived from the committed table, true whether that table is empty or full.
+  it('defaults to the committed player table', () => {
+    const roster = playersByTeam('KC')
+    expect(roster).toHaveLength(PLAYERS.filter((p) => p.team === 'KC').length)
+    const yards = (p) => (p.passYds ?? 0) + (p.rushYds ?? 0) + (p.recYds ?? 0)
+    for (const [i, p] of roster.entries()) {
+      expect(p.team).toBe('KC')
+      if (i > 0) expect(yards(p)).toBeLessThanOrEqual(yards(roster[i - 1]))
+    }
   })
 })

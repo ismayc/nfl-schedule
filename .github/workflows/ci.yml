@@ -161,7 +161,7 @@ jobs:
         run: node sports-viewer-meta/scripts/rehearse-clock.mjs --repo the-nfl-schedule | tee rehearsal.txt
       - name: Keep the result
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rehearsal-the-nfl-schedule
           path: rehearsal.txt

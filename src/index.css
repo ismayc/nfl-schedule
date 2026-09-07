@@ -2,6 +2,11 @@
    that index.html stamps on <html> before first paint. */
 :root,
 :root[data-theme='dark'] {
+  /* Tells the browser which palette its own UI should use: scrollbars, form
+     controls, the canvas behind the page. Without it those stay light while the
+     page is dark, which is what these six repos shipped. The six soccer/FIBA
+     siblings have always declared it. */
+  color-scheme: dark;
   --bg: #15171b;
   --bg-soft: #1b1e23;
   --card: #1b1e23;
@@ -45,6 +50,7 @@
 }
 
 :root[data-theme='light'] {
+  color-scheme: light;
   --bg: #e7e8ea;
   --bg-soft: #f4f5f6;
   --card: #ffffff;

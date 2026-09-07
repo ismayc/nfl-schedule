@@ -25,6 +25,7 @@ import TeamPanel from './components/TeamPanel.jsx'
 import PlayerModal from './components/PlayerModal.jsx'
 import { detectEvents, eventKey } from './services/alerts.js'
 import TeamLogo from './components/TeamLogo.jsx'
+import { playoffPicture } from './utils/standings.js'
 
 const LIVE_REFRESH_MS = 30_000
 const IDLE_REFRESH_MS = 120_000
@@ -121,6 +122,13 @@ export default function App() {
 
   // Committed schedule + live overlay. Everything downstream is derived from this.
   const games = useMemo(() => applyLive(GAMES, live), [live])
+
+  // The playoff picture, derived ONCE. playoffPicture runs the official 12-step division
+  // and 11-step wild-card tiebreaker chains over the season: ~1.8ms per call here. It
+  // used to be computed inside StandingsView, StatsView and TeamPanel independently, and
+  // TeamPanel's memo ran on every `games` change even while the panel was CLOSED,
+  // because the component only returns null further down.
+  const picture = useMemo(() => playoffPicture(games), [games])
   const nLive = useMemo(() => liveCount(games), [games])
   // The archived season a History-opened panel describes, or null for the live one.
   const panelSeason = panelYear == null ? null : HISTORY.find((x) => x.year === panelYear)
@@ -555,13 +563,14 @@ export default function App() {
             onOpen={setDetail}
           />
         )}
-        {view === 'standings' && <StandingsView games={games} onPick={pickTeam} />}
+        {view === 'standings' && <StandingsView games={games} picture={picture} onPick={pickTeam} />}
         {view === 'playoffs' && (
           <Bracket games={games} tz={tz} onPick={pickTeam} onOpen={setDetail} />
         )}
         {view === 'stats' && (
           <StatsView
             games={games}
+            picture={picture}
             tz={tz}
             onPickTeam={pickTeam}
             onPickPlayer={setPlayerModal}
@@ -588,6 +597,7 @@ export default function App() {
 
       <TeamPanel
         abbr={teamPanel}
+        picture={picture}
         season={panelSeason}
         games={games}
         tz={tz}

@@ -176,12 +176,14 @@ function Table({ caption, rows, rankKey, onPick, cutAfter, cutLabel, showFinish 
   )
 }
 
-export default function StandingsView({ games, onPick }) {
+export default function StandingsView({ games, onPick, picture }) {
   const [mode, setMode] = useState('division')
   // playoffPicture rows carry the race state (clinch flags, Finish ranges) on top of
   // the seeded conference order; the division tables borrow the flags by abbr so the
   // badges read the same in both modes.
-  const byConference = useMemo(() => playoffPicture(games), [games])
+  // `picture` comes from App, which derives it once for every view that needs it. The
+  // fallback keeps this component renderable on its own.
+  const byConference = useMemo(() => picture ?? playoffPicture(games), [games, picture])
   const byDivision = useMemo(() => {
     const race = {}
     for (const conf of CONFERENCE_KEYS) {

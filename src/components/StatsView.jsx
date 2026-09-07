@@ -314,8 +314,10 @@ function ConferenceRace({ conf, rows, onPickTeam }) {
   )
 }
 
-function PlayoffRace({ games, onPickTeam }) {
-  const picture = useMemo(() => playoffPicture(games), [games])
+function PlayoffRace({ games, picture: pictureProp, onPickTeam }) {
+  // `picture` comes from App, which derives it once for every view that needs it. The
+  // fallback keeps this component renderable on its own.
+  const picture = useMemo(() => pictureProp ?? playoffPicture(games), [games, pictureProp])
   return (
     <div className="grid-2">
       {CONFERENCE_KEYS.map((conf) => (
@@ -328,7 +330,7 @@ function PlayoffRace({ games, onPickTeam }) {
 // Stable identity so the Leaders memo doesn't recompute on every parent render.
 const liveLeaders = (cat) => leaderboard(cat.key, { limit: 5 })
 
-export default function StatsView({ games, tz, onPickTeam, onPickPlayer, onOpen }) {
+export default function StatsView({ games, tz, picture, onPickTeam, onPickPlayer, onOpen }) {
   return (
     <section className="view">
       <div className="view-head">
@@ -337,7 +339,7 @@ export default function StatsView({ games, tz, onPickTeam, onPickPlayer, onOpen 
       <TotalsStrip games={games} tz={tz} onOpen={onOpen} />
       <Leaders getRows={liveLeaders} onPickTeam={onPickTeam} onPickPlayer={onPickPlayer} />
       <MarginChart rows={teamScoring(games)} onPickTeam={onPickTeam} />
-      <PlayoffRace games={games} onPickTeam={onPickTeam} />
+      <PlayoffRace games={games} picture={picture} onPickTeam={onPickTeam} />
     </section>
   )
 }

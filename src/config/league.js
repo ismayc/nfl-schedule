@@ -8,6 +8,10 @@
 //
 // Conference/division *membership* is ESPN-derived and lives in the generated
 // src/data/teams.js. This file owns the *rules and display*, not the roster.
+// SEASON is re-exported below rather than copied into LEAGUE as a field. A `season:`
+// field would have no reader: callers want the value itself, and giving them one import
+// point is the whole job. The tournament viewers DO read LEAGUE.season, because their
+// chrome tests assert the edition year appears in the title and the .ics identity.
 import { SEASON, CONFERENCE_BY_ABBR, DIVISION_BY_ABBR } from '../data/teams.js'
 
 export const LEAGUE = {
@@ -15,14 +19,15 @@ export const LEAGUE = {
   name: 'NFL',
   title: 'The NFL Schedule',
   tagline: 'Every game in your timezone',
-  season: SEASON,
   espnPath: 'football/nfl',
   storageKey: 'nfl', // → 'nfl:theme', 'nfl:alerts'
-  // UI-chrome accent only. Per PLAYBOOK §9, the accent never encodes data.
-  themeColor: '#0b1220',
+  // UI chrome only. Matches --bg in index.css, <meta name="theme-color">, and the
+  // manifest. This declared #0b1220 for weeks while all three shipped #15171b, unnoticed
+  // because nothing read the field and no test compared it to anything. Both are now
+  // true: it is read by test/chrome-identity.test.js, and it is the right value.
+  themeColor: '#15171b',
 
   // ── Vocabulary ──────────────────────────────────────────────────────────────
-  gameNoun: 'game',
   periodNoun: 'quarter',
   periodShort: 'Q',
   regulationPeriods: 4,
@@ -33,15 +38,11 @@ export const LEAGUE = {
   // ── Time / locale ───────────────────────────────────────────────────────────
   locale: 'en-US',
   hour12: true,
-  weekStartsMonday: false, // US sport: Sun–Sat (NFL weeks run Thu→Mon)
   // "probably still in progress" window for the live overlay. NFL games run ~3–3.5h,
   // vs the WNBA's 2.25h — getting this wrong leaves a finished game showing "live".
   gameLengthMs: 3.5 * 60 * 60 * 1000,
 
   // ── Standings ───────────────────────────────────────────────────────────────
-  // W-L-T: a tie counts as half a win. The NFL is the only league in the family
-  // that records ties, so this is its defining structural quirk.
-  standingsModel: 'winlosstie',
   closeMargin: 8, // "one score" in football (a TD + 2pt conversion)
 
   // ── Calendar export ─────────────────────────────────────────────────────────
@@ -63,7 +64,7 @@ export const CONFERENCE_KEYS = ['AFC', 'NFC']
 export const DIVISION_ORDER = ['East', 'North', 'South', 'West']
 
 // Re-export the ESPN-derived membership so callers have one import point.
-export { CONFERENCE_BY_ABBR, DIVISION_BY_ABBR }
+export { SEASON, CONFERENCE_BY_ABBR, DIVISION_BY_ABBR }
 
 // ── Playoff structure ─────────────────────────────────────────────────────────
 // Single elimination, seven seeds per conference. Seeds 1–4 are the four division

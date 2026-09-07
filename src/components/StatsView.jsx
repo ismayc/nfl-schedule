@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { seasonTotals, teamScoring, leaderboard, LEADER_CATEGORIES } from '../utils/stats.js'
 import { playoffPicture } from '../utils/standings.js'
-import { CONFERENCES, CONFERENCE_KEYS } from '../config/league.js'
+import { CONFERENCES, CONFERENCE_KEYS, LEAGUE } from '../config/league.js'
 import { formatDate } from '../utils/time.js'
 import TeamLogo from './TeamLogo.jsx'
 
@@ -89,7 +89,7 @@ function TotalsStrip({ games, tz, onOpen }) {
           note={(g) => `by ${g.margin}`}
         />
       )}
-      {open === 'ot' && <GameList games={t.overtimes} tz={tz} onOpen={onOpen} note={() => 'OT'} />}
+      {open === 'ot' && <GameList games={t.overtimes} tz={tz} onOpen={onOpen} note={() => LEAGUE.overtimeLabel} />}
       {open === 'ties' && <GameList games={t.ties} tz={tz} onOpen={onOpen} note={() => 'tie'} />}
     </div>
   )

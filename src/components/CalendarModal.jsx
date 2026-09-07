@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { SEASON } from '../data/teams.js'
-import { LEAGUE } from '../config/league.js'
+import { LEAGUE, SEASON } from '../config/league.js'
 import { downloadIcs, webcalUrl, googleCalendarUrl } from '../utils/ics.js'
 import { useFollow } from '../context/follow.jsx'
 import { useModalA11y } from '../hooks/useModalA11y.js'

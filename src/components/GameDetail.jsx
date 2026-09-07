@@ -93,7 +93,7 @@ function LineScore({ game, hideScores }) {
 
   return (
     <>
-      <h4 className="md-sub">By quarter</h4>
+      <h4 className="md-sub">By {LEAGUE.periodNoun}</h4>
       <div className="table-scroll">
         <table className="linescore">
           <thead>

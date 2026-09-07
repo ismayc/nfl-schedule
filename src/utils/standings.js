@@ -1,3 +1,8 @@
+// W-L-T: a tie counts as half a win. This is the only league in the family that
+// records ties, and it is the defining structural quirk of everything below.
+// (This sentence used to live in src/config/league.js as `standingsModel:
+// 'winlosstie'`, a field nothing ever read: the model is not selected at runtime,
+// it is what this file IS.)
 // Standings, seeding, and playoff-race math — all pure functions over the merged game
 // list, so they can be unit-tested with synthetic arrays and no DOM.
 //

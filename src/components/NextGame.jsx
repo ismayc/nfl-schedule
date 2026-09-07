@@ -4,6 +4,7 @@ import { TEAM_BY_ABBR } from '../data/teams.js'
 import { useFollow } from '../context/follow.jsx'
 import TeamLogo from './TeamLogo.jsx'
 import { livePeriod } from './GameCard.jsx'
+import { LEAGUE } from '../config/league.js'
 
 const HOUR_MS = 60 * 60 * 1000
 // How often the banner refreshes when no seconds digit is on screen, and the
@@ -136,7 +137,7 @@ export default function NextGame({ games, tz }) {
         {list.map((g) => (
           <button key={g.id} className="nm-live-row" onClick={() => jumpTo(g)}>
             <Side abbr={g.away} fallback={g.awayName} />
-            <span className="nm-v">@</span>
+            <span className="nm-v">{LEAGUE.homeAwaySep}</span>
             <Side abbr={g.home} fallback={g.homeName} />
             {live && <span className="live-badge">● {livePeriod(g)}</span>}
             <span className="nm-when">{g.city}</span>
@@ -165,7 +166,7 @@ export default function NextGame({ games, tz }) {
 
       <div className="nm-teams">
         <Side abbr={game.away} fallback={game.awayName} />
-        <span className="nm-v">@</span>
+        <span className="nm-v">{LEAGUE.homeAwaySep}</span>
         <Side abbr={game.home} fallback={game.homeName} />
       </div>
 

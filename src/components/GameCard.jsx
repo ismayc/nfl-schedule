@@ -106,7 +106,7 @@ export default function GameCard({ game, tz, hideScores, onOpen }) {
 
       <div className="game-teams">
         <Side abbr={game.away} score={as} winner={awayWon} hideScores={hideScores} />
-        <span className="at">@</span>
+        <span className="at">{LEAGUE.homeAwaySep}</span>
         <Side abbr={game.home} score={hs} winner={homeWon} hideScores={hideScores} />
       </div>
 

@@ -1,5 +1,6 @@
 import { TEAM_BY_ABBR } from '../data/teams.js'
 import TeamLogo from './TeamLogo.jsx'
+import { LEAGUE } from '../config/league.js'
 
 const nick = (abbr) => TEAM_BY_ABBR[abbr]?.name || abbr
 
@@ -7,7 +8,7 @@ function describe(e) {
   const { game: g, leader, margin } = e
   switch (e.kind) {
     case 'kickoff':
-      return { icon: '🏈', label: 'Kickoff', text: `${nick(g.away)} at ${nick(g.home)}` }
+      return { icon: '🏈', label: LEAGUE.kickoffLabel, text: `${nick(g.away)} at ${nick(g.home)}` }
     case 'lead-change':
       return {
         icon: '🔄',

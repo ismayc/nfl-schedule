@@ -6,6 +6,25 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-09-06
 
+- **This repo invented the config pattern; doing the other ten showed what it had drifted
+  into.** Seven of its 22 `LEAGUE` fields had no reader anywhere, which is the exact
+  failure the new configs were written to avoid, and one was wrong: `themeColor` declared
+  `#0b1220` while `index.html`, the manifest and `index.css` all shipped `#15171b`. It had
+  been wrong for weeks, unnoticed because nothing read the field and no test compared it.
+- **Four dead fields are now live**, wired to values that were sitting inline a few files
+  away: `periodNoun` (the "By quarter" heading), `kickoffLabel` (Toasts spelled it by
+  hand), `homeAwaySep` (three bare `@` sites) and `overtimeLabel` (StatsView's note).
+- **Three are gone instead.** `weekStartsMonday` was dead and contradicted the contract
+  premier-league settled today, since `createTimeUtils` takes `weekStart: 0|1`. `gameNoun`
+  was dead with no natural call site. `standingsModel` was dead and unwireable by design:
+  the model is not selected at runtime, it is what `utils/standings.js` is, so the W-L-T
+  sentence moved to the top of that file. `season` was redundant rather than dead, so
+  `SEASON` is re-exported and `App` and `CalendarModal` import it from the config instead
+  of reaching past it into `data/teams.js`.
+- **New `test/chrome-identity.test.js`.** Its `.ics` assertion differs from the tournament
+  viewers' on purpose: this is a recurring league, so the UID domain carries no year and
+  next season's fixtures should update a subscriber's existing entries rather than sit
+  beside them.
 - **A red refresh now says which of three things it means.** Fourteen days of Refresh
   data failures across the family sorted into a fetch that did not land (ESPN 5xx, or the
   roster guard correctly refusing a truncated team list; the site is fine), a red gate (a

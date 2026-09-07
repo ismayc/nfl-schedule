@@ -6,6 +6,19 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-09-06
 
+- **The playoff table is derived once now, not once per consumer.** Candidate 4 from the
+  architecture review, though the review overstated one half and missed the half that
+  costs something. `StandingsView` and `StatsView` are mutually exclusive views, so they
+  never both ran, and since all callers use the same function they could never disagree.
+  What was real: `TeamPanel` computed the table in an unguarded memo while App renders it
+  unconditionally, so **every live poll ran the full tiebreaker chain for a modal that was
+  closed**. The `if (!abbr || !row) return null` guard sits below the hooks, and the
+  `upcoming` memo four lines further down has always guarded on `abbr`. Measured per call
+  on the committed board: 3.04ms (NBA), 1.83ms (NFL), 0.37ms (WNBA).
+- **New `test/standings-derived-once.test.jsx`** counts calls into the standings module
+  and asserts the solver runs once on first paint, that a mounted-but-closed panel
+  contributes nothing, and that switching views adds no second run. Verified it fails
+  against the old memo.
 - **This repo invented the config pattern; doing the other ten showed what it had drifted
   into.** Seven of its 22 `LEAGUE` fields had no reader anywhere, which is the exact
   failure the new configs were written to avoid, and one was wrong: `themeColor` declared

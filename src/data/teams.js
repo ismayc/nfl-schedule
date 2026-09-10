@@ -335,8 +335,8 @@ export const ALL_ABBRS = TEAMS.map((t) => t.abbr)
 export const CONFERENCE_BY_ABBR = {
   "BUF": "AFC",
   "MIA": "AFC",
-  "NE": "AFC",
   "NYJ": "AFC",
+  "NE": "AFC",
   "CIN": "AFC",
   "CLE": "AFC",
   "PIT": "AFC",
@@ -361,17 +361,17 @@ export const CONFERENCE_BY_ABBR = {
   "NO": "NFC",
   "TB": "NFC",
   "CAR": "NFC",
+  "SEA": "NFC",
   "LAR": "NFC",
   "ARI": "NFC",
-  "SF": "NFC",
-  "SEA": "NFC"
+  "SF": "NFC"
 }
 
 export const DIVISION_BY_ABBR = {
   "BUF": "AFC East",
   "MIA": "AFC East",
-  "NE": "AFC East",
   "NYJ": "AFC East",
+  "NE": "AFC East",
   "CIN": "AFC North",
   "CLE": "AFC North",
   "PIT": "AFC North",
@@ -396,8 +396,8 @@ export const DIVISION_BY_ABBR = {
   "NO": "NFC South",
   "TB": "NFC South",
   "CAR": "NFC South",
+  "SEA": "NFC West",
   "LAR": "NFC West",
   "ARI": "NFC West",
-  "SF": "NFC West",
-  "SEA": "NFC West"
+  "SF": "NFC West"
 }

@@ -2193,7 +2193,15 @@ button.drill-row:hover {
 /* ── Game detail modal ──────────────────────────────────────────────── */
 .modal-wrap {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Pin to the visible viewport, not the layout viewport. On iOS Safari
+     `100vh` is the large viewport (toolbars hidden), so a centered full-height
+     modal has its top, and the close button, pushed behind the address bar.
+     `100dvh` tracks the actually-visible height; the vh line is the fallback. */
+  height: 100vh;
+  height: 100dvh;
   z-index: 50;
   display: grid;
   place-items: center;
@@ -2207,6 +2215,7 @@ button.drill-row:hover {
   position: relative;
   width: min(100%, 560px);
   max-height: calc(100vh - 40px);
+  max-height: calc(100dvh - 40px);
   overflow-y: auto;
   background: var(--card);
   border: 1px solid var(--border);

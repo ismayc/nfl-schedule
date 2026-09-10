@@ -4,6 +4,15 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-10
+
+- **Fixed: the game-detail popup could not be closed on mobile.** The modal was sized and
+  centered with `100vh`, which on iOS Safari is the large viewport (as if the toolbars
+  were hidden). A full-height game detail was centered so that its top, and the close
+  button with it, sat behind the address bar and could not be reached or scrolled to. The
+  overlay and modal now size with `100dvh` (the visible viewport height), falling back to
+  `100vh` on browsers without `dvh`, so the close button stays on screen.
+
 ## 2026-09-06
 
 - **The playoff table is derived once now, not once per consumer.** Candidate 4 from the

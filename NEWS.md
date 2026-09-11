@@ -4,6 +4,16 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-11
+
+- **Hardened the local-channel tests against a future regional feed.** Two tests asserted
+  the live `LOCAL_CATALOG` was empty ("a fully national slate, which is this league
+  today"). The moment ESPN names a regional feed that assumption breaks and the refresh
+  gate goes red, leaving the site stale (this is exactly what happened to the NBA viewer
+  today). The empty-case tests now drive a mocked-empty catalog, and the unit test keeps
+  its synthetic national-slate check, so neither depends on which games carry a local
+  feed. No behavior change; coverage stays at 100%.
+
 ## 2026-09-10
 
 - **Fixed: the game-detail popup could not be closed on mobile.** The modal was sized and

@@ -6,7 +6,6 @@ import {
   isRegional,
   SERVICE_CATALOG,
   SERVICE_BY_KEY,
-  LOCAL_CATALOG,
 } from '../src/utils/watch.js'
 
 const labels = (b, keys, game) => watchableServices(b, keys, game).map((s) => s.label)
@@ -162,8 +161,7 @@ describe('localChannelCatalog', () => {
     expect(cat.map((c) => c.label)).toEqual(['Pinned TV', 'Alpha TV', 'Zed TV'])
   })
 
-  it('is empty for a fully national slate — which is this league today, so the picker hides it', () => {
+  it('is empty for a fully national slate', () => {
     expect(localChannelCatalog([g('AAA', 'BBB', 'CBS')])).toEqual([])
-    expect(LOCAL_CATALOG).toEqual([])
   })
 })

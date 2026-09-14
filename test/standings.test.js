@@ -29,6 +29,27 @@ describe('countable games', () => {
     expect(GAMES_2025.some((g) => g.seasonType === 'postseason')).toBe(true)
     expect(reg.some((g) => g.seasonType === 'postseason')).toBe(false)
   })
+
+  it('excludes a live game with a provisional score', () => {
+    // The overlay gives an in-progress game a provisional `score` AND `live: true`.
+    // A mid-game lead must not post as a win (the "Giants show a win while their
+    // first game is in progress" bug).
+    const live = {
+      id: 'live-1',
+      tip: '2026-09-13T17:00:00.000Z',
+      seasonType: 'regular',
+      week: 1,
+      home: 'NYG',
+      away: 'DAL',
+      score: [10, 3],
+      live: true,
+    }
+    expect(countsForStandings(live)).toBe(false)
+    const t = computeStandings([live])
+    expect(t.NYG.w).toBe(0)
+    expect(t.NYG.gp).toBe(0)
+    expect(t.DAL.l).toBe(0)
+  })
 })
 
 describe('W-L-T derivation is internally consistent', () => {

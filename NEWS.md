@@ -4,6 +4,17 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-13
+
+- **Fixed a live game counting as a win in the Standings.** The live overlay gives an
+  in-progress game a provisional `score` alongside `live: true`, but the standings
+  predicate only checked for a score, so a team ahead mid-game (e.g. the Giants during
+  their opener) posted a win before the final. `countsForStandings` now also requires
+  `!g.live`, and the two race-math siblings that shared the flaw were fixed to match: the
+  head-to-head series ledger treats a live meeting as still remaining rather than banking
+  its provisional result, and the clinch-scenario engine classes a live game as remaining,
+  not played. Added a regression test; coverage stays at 100%.
+
 ## 2026-09-11
 
 - **Hardened the local-channel tests against a future regional feed.** Two tests asserted

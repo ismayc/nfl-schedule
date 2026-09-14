@@ -22,9 +22,12 @@ export const DIVISIONS = CONFERENCE_KEYS.flatMap((c) => DIVISION_ORDER.map((d) =
 
 // A game counts toward the standings only if it is a completed regular-season game.
 // Postponed shells and the postseason are excluded — that is what makes derived records
-// match ESPN's official ones exactly (the verification in PLAYBOOK §2).
+// match ESPN's official ones exactly (the verification in PLAYBOOK §2). A live game is
+// excluded too: the overlay gives an in-progress game a provisional `score` plus
+// `live: true` (services/espn.js), so a score alone is not proof the game is decided —
+// counting it would post a mid-game lead as a win.
 export const countsForStandings = (g) =>
-  g.seasonType === 'regular' && !!g.score && !g.postponed && !g.canceled
+  g.seasonType === 'regular' && !!g.score && !g.live && !g.postponed && !g.canceled
 
 const wlt = () => ({ w: 0, l: 0, t: 0 })
 
@@ -528,7 +531,9 @@ function seriesLedger(games) {
     const key = [g.home, g.away].sort().join('|')
     let e = ledger.get(key)
     if (!e) ledger.set(key, (e = { hp: {}, remaining: 0 }))
-    if (!g.score) e.remaining++
+    // A live game is not yet decided: count the meeting as remaining, never bank its
+    // provisional score (same reasoning as countsForStandings above).
+    if (!g.score || g.live) e.remaining++
     else {
       const [hs, as] = g.score
       if (hs === as) {

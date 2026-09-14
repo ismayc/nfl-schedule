@@ -26,11 +26,13 @@
 //   (budget gate) — exactly the late-season window where it is useful. Over budget
 //   it returns null and the caller keeps the arithmetic verdict.
 
+// A live game is undecided: its provisional score is not a result, so it is remaining
+// (still to be enumerated), never played — same posture as countsForStandings.
 const isRemaining = (g) =>
-  g.seasonType === 'regular' && !g.postponed && !g.canceled && !g.score
+  g.seasonType === 'regular' && !g.postponed && !g.canceled && (!g.score || g.live)
 
 const isPlayed = (g) =>
-  g.seasonType === 'regular' && !g.postponed && !g.canceled && !!g.score
+  g.seasonType === 'regular' && !g.postponed && !g.canceled && !!g.score && !g.live
 
 // 3^11 coupled-game outcomes ≈ 177k leaf evaluations — unnoticeable in the browser.
 // Three-way branching prices each game at 3 leaves (the NBA sibling's 2^18 budget

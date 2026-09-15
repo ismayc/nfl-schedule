@@ -54,10 +54,30 @@ const MONTHS = [
   [`${SEASON + 1}0101`, `${SEASON + 1}0131`],
 ]
 
+// ESPN answers a scoreboard query for a season that does not exist yet with an
+// HTTP 400 (it used to return 200 and an empty event list). That is exactly the
+// "not published yet" signal this watch reports on, so a 400/404 on a window is
+// treated as an empty month, not a failure. Anything else (a 403, a 5xx that
+// outlasted the retries, a network error) is a real outage and still throws, so it
+// stays visible rather than masquerading as "not yet" (see the 2026-08-16 note in
+// new-season-watch.yml).
+const NOT_YET = /\bHTTP 40[04]\b/
+
 const games = new Map() // id → event, so an overlapping range can't double-count
+let windowsMissing = 0
 for (const [from, to] of MONTHS) {
-  const d = await getJson(`${SITE}/scoreboard?dates=${from}-${to}&limit=1000`)
+  let d
+  try {
+    d = await getJson(`${SITE}/scoreboard?dates=${from}-${to}&limit=1000`)
+  } catch (err) {
+    if (!NOT_YET.test(err.message)) throw err
+    windowsMissing++
+    continue
+  }
   for (const ev of d.events || []) games.set(ev.id, ev)
+}
+if (windowsMissing) {
+  console.error(`Note: ${windowsMissing}/${MONTHS.length} scoreboard windows returned no season (HTTP 400/404), which is expected before the schedule is posted.`)
 }
 
 const all = [...games.values()]

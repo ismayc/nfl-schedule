@@ -1,0 +1,139 @@
+name: Data freshness
+
+# An independent freshness monitor, decoupled from whether any Refresh run succeeded.
+#
+# The Refresh workflow can only report a problem if it actually runs and its own fetch
+# fails in a way it recognizes. Two failure modes slip past that: a fetch that exits
+# GREEN with a warning (nothing committed, run looks fine), and the scheduled Refresh
+# not firing at all (GitHub cron runs hours late or skips). Either freezes the site
+# silently. This job watches the one thing that proves the pipeline is alive.
+#
+# It measures the age of the last SUCCESSFUL FETCH, not the last data commit. Commit
+# age is the wrong signal: a quiet week or a two-week international break legitimately
+# commits nothing while everything works. A successful fetch, whether or not it changed
+# anything, is the real "the pipeline ran and reached ESPN" heartbeat. The Refresh run's
+# own conclusion is no good either: its fetch is continue-on-error, so a failed fetch
+# still exits the run green, which is the exact blind spot this monitor exists to cover.
+#
+# It shares the Refresh workflow's issue title, so the two never file duplicate stale
+# issues: whichever notices first opens the single "$STALE_ISSUE", the other sees it
+# open and skips, and either a landed Refresh commit or this job seeing a fresh fetch
+# closes it. When stale, this job exits non-zero so the scheduled run itself goes RED.
+#
+# No checkout and no node actions on purpose: it reads run history from the API and uses
+# only the preinstalled gh CLI, so node-guard has nothing to flag.
+
+on:
+  schedule:
+    # Every 6 hours, offset from Refresh (which runs at 06:15 and 18:15 UTC).
+    - cron: '45 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      threshold_hours:
+        description: 'Override the staleness threshold (hours) for this run, e.g. 0 to force the stale path when testing.'
+        required: false
+        default: ''
+
+permissions:
+  actions: read # read Refresh run and step history via the API
+  issues: write # open and close the shared stale-data issue
+
+concurrency:
+  group: data-freshness
+  cancel-in-progress: false
+
+env:
+  # Fetches run twice a day, so the last successful one should be well under 12h old.
+  # 30h is ~2.5 missed cycles: past a transient ESPN outage and past GitHub cron running
+  # several hours late, but well under the ~48h blind spot that once let a family-wide
+  # fetch break sit unnoticed.
+  FRESH_MAX_HOURS: 30
+  # SAME title as refresh-data.yml's STALE_ISSUE, deliberately: one shared issue.
+  STALE_ISSUE: 'Refresh has not landed for days'
+  # The Refresh workflow this monitors. FETCH_OK_STEP is the step that runs ONLY on a
+  # successful fetch (`if: steps.fetch.outcome == 'success'`) and then always succeeds,
+  # so its conclusion being "success" is a name-independent proof the fetch reached
+  # ESPN. The fetch step itself is named differently across the family ("Fetch ..." vs
+  # "Regenerate ..."), but this step's name is identical in every repo.
+  REFRESH_WORKFLOW: refresh-data.yml
+  FETCH_OK_STEP: 'Summarize what changed'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Age of the last successful fetch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          OVERRIDE: ${{ github.event.inputs.threshold_hours }}
+        run: |
+          set -euo pipefail
+          threshold="${OVERRIDE:-$FRESH_MAX_HOURS}"
+          now=$(date -u +%s)
+
+          # Walk recent Refresh runs newest-first; stop at the first where the
+          # fetch-success step concluded "success". Its finish time is the heartbeat.
+          fetch_at=""
+          for id in $(gh api "repos/$GH_REPO/actions/workflows/$REFRESH_WORKFLOW/runs?per_page=15&status=completed" --jq '.workflow_runs[].id'); do
+            line=$(gh api "repos/$GH_REPO/actions/runs/$id/jobs" \
+              --jq '([.jobs[].steps[] | select(.name == env.FETCH_OK_STEP)][0]) // {} | "\(.conclusion // "") \(.completed_at // "")"' 2>/dev/null || echo "")
+            concl=${line%% *}
+            when=${line#* }
+            if [ "$concl" = "success" ]; then
+              fetch_at="$when"
+              break
+            fi
+          done
+
+          if [ -z "$fetch_at" ]; then
+            age_h=99999
+            detail="no successful fetch found in the last 15 Refresh runs"
+          else
+            age_h=$(( ( now - $(date -u -d "$fetch_at" +%s) ) / 3600 ))
+            detail="last successful fetch $fetch_at (${age_h}h ago)"
+          fi
+          echo "$detail. Threshold: ${threshold}h." | tee -a "$GITHUB_STEP_SUMMARY"
+
+          open=$(gh issue list --state open --search "\"$STALE_ISSUE\"" --json number --jq '.[0].number // empty')
+
+          if [ "$age_h" -le "$threshold" ]; then
+            if [ -n "$open" ]; then
+              gh issue close "$open" --comment "The pipeline is alive again: $detail (run ${RUN_URL})."
+              echo "Fresh; closed #$open." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "Fresh; nothing to do." >> "$GITHUB_STEP_SUMMARY"
+            fi
+            exit 0
+          fi
+
+          # Stale. Make the run RED and ensure exactly one open issue.
+          echo "::error::$detail exceeds the ${threshold}h freshness threshold"
+          if [ -n "$open" ]; then
+            echo "Stale-data issue #$open already open, not re-filing." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          cat > /tmp/issue-body.md <<EOF
+          The data pipeline has not completed a successful fetch recently: $detail, past the
+          ${threshold}h freshness threshold. The site is serving the last committed snapshot.
+          Nothing wrong has shipped, but something is stopping Refresh from reaching ESPN, or
+          the scheduled Refresh is not firing at all.
+
+          Freshness monitor run: $RUN_URL
+
+          ## What to do
+
+          1. Open the latest **Refresh data** run. If its fetch step warns and nothing
+             committed, read the error: a family-wide ESPN change (an endpoint dropping a
+             query shape, a host block) can freeze every viewer at once. If there is no
+             recent Refresh run at all, the schedule did not fire; dispatch it by hand.
+          2. Fix the cause (usually in the repo's own \`scripts/\`), then dispatch
+             **Refresh data**. A successful fetch closes this issue; so does this monitor's
+             next run.
+
+          Filed by \`.github/workflows/data-freshness.yml\`.
+          EOF
+          gh issue create --title "$STALE_ISSUE" --body-file /tmp/issue-body.md
+          exit 1

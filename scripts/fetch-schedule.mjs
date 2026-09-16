@@ -22,6 +22,7 @@ import {
   fetchTeams,
   broadcastNames,
   monthRange,
+  expandDays,
   banner,
 } from './lib/espn.mjs'
 import { SEASON as COMMITTED_SEASON, TEAMS as COMMITTED_TEAMS } from '../src/data/teams.js'
@@ -157,15 +158,18 @@ export async function fetchGroups() {
 }
 
 // Per-game line scores + top performers live only on the scoreboard, not the
-// team-schedule feed. The scoreboard accepts a date RANGE, so a month per request
-// covers the season in a handful of calls. (Empty for an unplayed 2026 season — no-op.)
+// team-schedule feed. (Empty for an unplayed 2026 season — no-op.)
 const GAME_LEADER_CATS = ['passingYards', 'rushingYards', 'receivingYards']
 
 async function enrichWithBoxScores(games) {
   const months = [...new Set(games.filter((g) => g.score).map((g) => g.tip.slice(0, 7)))].sort()
+  const days = months.flatMap((ym) => expandDays(...monthRange(ym).split('-')))
   const byId = new Map()
-  for (const ym of months) {
-    const d = await getJson(`${SITE}/${ESPN_PATH}/scoreboard?dates=${monthRange(ym)}&limit=400`)
+  // Single-date queries only: ESPN dropped hyphenated `dates=A-B` ranges (they 400 now).
+  const pages = await mapLimit(days, CONCURRENCY, (day) =>
+    getJson(`${SITE}/${ESPN_PATH}/scoreboard?dates=${day}&limit=400`)
+  )
+  for (const d of pages) {
     for (const ev of d.events || []) {
       const c = ev.competitions?.[0]
       if (!c) continue

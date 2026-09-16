@@ -37,12 +37,25 @@ export const yyyymmdd = (d) =>
     d.getUTCDate()
   ).padStart(2, '0')}`
 
-/** Inclusive UTC month range, for the scoreboard's `dates=start-end` form. */
+/** Inclusive UTC month bounds as `start-end` (split by the caller into single days). */
 export function monthRange(ym) {
   const [y, m] = ym.split('-').map(Number)
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate()
   const p = String(m).padStart(2, '0')
   return `${y}${p}01-${y}${p}${last}`
+}
+
+// ESPN dropped hyphenated date-range scoreboard queries in September 2026 (every
+// `dates=A-B` now answers HTTP 400, even a same-day `A-A`), so a span has to be walked
+// one day at a time. Expand an inclusive `YYYYMMDD` start/end into its individual days;
+// iterating in UTC-day steps keeps the coverage identical to the range it replaces.
+export function expandDays(from, to) {
+  const at = (s) => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8))
+  const out = []
+  for (let t = at(from); t <= at(to); t += 86400000) {
+    out.push(new Date(t).toISOString().slice(0, 10).replaceAll('-', ''))
+  }
+  return out
 }
 
 // ESPN's team list for a season is NOT a franchise list. It also carries the exhibition
@@ -177,23 +190,24 @@ export async function fetchSeason(espnPath, teams, opts = {}) {
 }
 
 /**
- * Walk the league's published calendar in windows.
+ * Walk the league's published calendar, one day at a time.
  *
- * The scoreboard silently caps at ~50 events regardless of `limit`, so the window has
- * to stay small AND the caller must assert the expected total afterwards — a silent
- * short read looks exactly like a quiet season.
+ * ESPN dropped hyphenated date-range scoreboard queries in September 2026 (every
+ * `dates=A-B` now answers HTTP 400, even a same-day `A-A`), so each calendar day is
+ * fetched as its own single-date query, concurrently. The caller still asserts the
+ * expected total afterwards, since a silent short read looks like a quiet season.
  */
-export async function fetchByCalendar(espnPath, { windowDays = 10, classify } = {}) {
+export async function fetchByCalendar(espnPath, { classify } = {}) {
   const board = await getJson(`${SITE}/${espnPath}/scoreboard`)
   const calendar = (board.leagues?.[0]?.calendar || []).map((d) => String(d).slice(0, 10))
   if (!calendar.length) throw new Error(`${espnPath}: no calendar published`)
 
   const days = [...new Set(calendar)].sort()
   const byId = new Map()
-  for (let i = 0; i < days.length; i += windowDays) {
-    const from = days[i].replace(/-/g, '')
-    const to = (days[Math.min(i + windowDays - 1, days.length - 1)]).replace(/-/g, '')
-    const d = await getJson(`${SITE}/${espnPath}/scoreboard?dates=${from}-${to}&limit=400`)
+  const pages = await mapLimit(days, CONCURRENCY, (day) =>
+    getJson(`${SITE}/${espnPath}/scoreboard?dates=${day.replace(/-/g, '')}&limit=400`)
+  )
+  for (const d of pages) {
     for (const ev of d.events || []) {
       const g = normalizeEvent(ev, { classify })
       if (g) byId.set(g.id, g)

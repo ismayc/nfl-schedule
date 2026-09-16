@@ -19,7 +19,7 @@
 // Exit 0 always — "not yet" is a normal answer, not a failure. The workflow reads the
 // `released` line from stdout rather than an exit code.
 
-import { getJson } from './lib/fetch.mjs'
+import { getJson, mapLimit, CONCURRENCY } from './lib/fetch.mjs'
 import { SEASON as COMMITTED_SEASON } from '../src/data/teams.js'
 
 // site.web.api, not site.api — the latter 403s every request from a cloud IP.
@@ -43,8 +43,9 @@ const INITIAL_RELEASE_FLOOR = 260
 const REGULAR = 2
 const typeOf = (ev) => Number(ev.season?.type ?? 0)
 
-// September through the first week of January. Walk month by month — a scoreboard
-// range query caps around 1000 events, and monthly windows stay far below it.
+// September through the first week of January. ESPN dropped hyphenated date-range
+// scoreboard queries in September 2026 (every `dates=A-B` now answers HTTP 400, even a
+// same-day `A-A`), so count games one day at a time across the months a season spans.
 const MONTHS = [
   [`${SEASON}0801`, `${SEASON}0831`],
   [`${SEASON}0901`, `${SEASON}0930`],
@@ -53,6 +54,15 @@ const MONTHS = [
   [`${SEASON}1201`, `${SEASON}1231`],
   [`${SEASON + 1}0101`, `${SEASON + 1}0131`],
 ]
+const expandDays = (from, to) => {
+  const at = (s) => Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8))
+  const out = []
+  for (let t = at(from); t <= at(to); t += 86400000) {
+    out.push(new Date(t).toISOString().slice(0, 10).replaceAll('-', ''))
+  }
+  return out
+}
+const DAYS = MONTHS.flatMap(([from, to]) => expandDays(from, to))
 
 // ESPN answers a scoreboard query for a season that does not exist yet with an
 // HTTP 400 (it used to return 200 and an empty event list). That is exactly the
@@ -63,21 +73,20 @@ const MONTHS = [
 // new-season-watch.yml).
 const NOT_YET = /\bHTTP 40[04]\b/
 
-const games = new Map() // id → event, so an overlapping range can't double-count
-let windowsMissing = 0
-for (const [from, to] of MONTHS) {
-  let d
+const games = new Map() // id → event, so overlapping days can't double-count
+let daysMissing = 0
+const pages = await mapLimit(DAYS, CONCURRENCY, async (day) => {
   try {
-    d = await getJson(`${SITE}/scoreboard?dates=${from}-${to}&limit=1000`)
+    return await getJson(`${SITE}/scoreboard?dates=${day}&limit=1000`)
   } catch (err) {
     if (!NOT_YET.test(err.message)) throw err
-    windowsMissing++
-    continue
+    daysMissing++
+    return null
   }
-  for (const ev of d.events || []) games.set(ev.id, ev)
-}
-if (windowsMissing) {
-  console.error(`Note: ${windowsMissing}/${MONTHS.length} scoreboard windows returned no season (HTTP 400/404), which is expected before the schedule is posted.`)
+})
+for (const d of pages) for (const ev of d?.events || []) games.set(ev.id, ev)
+if (daysMissing) {
+  console.error(`Note: ${daysMissing}/${DAYS.length} scoreboard days returned no season (HTTP 400/404), which is expected before the schedule is posted.`)
 }
 
 const all = [...games.values()]

@@ -207,7 +207,7 @@ export default function TeamPanel({
                   <span className="drill-date">{formatDate(g.tip, tz)}</span>
                   <span className="dim">{prefix(g)}</span>
                   <TeamLogo abbr={homeAway(g)} size={18} />
-                  <span>{TEAM_BY_ABBR[homeAway(g)]?.name}</span>
+                  <span className="drill-team">{TEAM_BY_ABBR[homeAway(g)]?.name}</span>
                   <span className="drill-note">
                     {liveState(g) === 'live' ? 'Live' : formatTime(g.tip, tz)}
                   </span>

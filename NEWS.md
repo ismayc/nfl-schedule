@@ -4,6 +4,17 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-16
+
+- **Fixed the squished "Next up" rows in a team's Standings pop-out.** The `.drill`
+  lists that are not wrapped in a clickable `.drill-row` (TeamPanel's "Next up" and
+  GameDetail's season series) put their cells straight into a non-flex `<li>`, so the
+  fixed-width date column and the right-aligned kickoff time both no-opped and the row
+  collapsed to squished inline text. A scoped CSS rule, `.drill li:not(:has(> .drill-row))`,
+  now gives an unwrapped row the same flex layout as a wrapped one, and a `.drill-team`
+  class truncates a long opponent name instead of crowding the time. CSS-only; the same
+  fix landed across the NBA and WNBA viewers so new viewers inherit it.
+
 ## 2026-09-13
 
 - **Fixed a live game counting as a win in the Standings.** The live overlay gives an

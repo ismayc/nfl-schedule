@@ -1453,6 +1453,18 @@ select:hover,
   padding: 0;
 }
 
+/* A drill row that is NOT wrapped in a `.drill-row` (a plain, non-clickable list,
+   e.g. TeamPanel's "Next up" and GameDetail's season series) still needs the row
+   layout, or its cells collapse to inline flow: the fixed-width date and the
+   margin-left:auto note both no-op, and everything squishes together. Scope it to
+   unwrapped rows so the clickable `.drill-row` lists are untouched. */
+.drill li:not(:has(> .drill-row)) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 2px;
+}
+
 /* The row is a button when the caller wires one, a plain span otherwise — same box
    either way, so the two forms sit identically in the list. */
 .drill-row {
@@ -1493,6 +1505,16 @@ button.drill-row:hover {
   margin-left: auto;
   color: var(--text-faint);
   font-size: 11.5px;
+  flex: 0 0 auto;
+}
+
+/* Opponent name in a Next-up row: take the middle space and truncate rather than
+   crowd the time out to the edge in a narrow modal. */
+.drill-team {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Category switcher — one category shown at a time, so the chart is a single

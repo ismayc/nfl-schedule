@@ -2,7 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { GAMES } from './data/schedule.js'
 import { TEAMS } from './data/teams.js'
 import { LEAGUE, SEASON } from './config/league.js'
-import { detectTimezone, timezoneOptions, dayKey, todayKey, whenBucket } from './utils/time.js'
+import {
+  detectTimezone,
+  timezoneOptions,
+  formatZoneAbbr,
+  dayKey,
+  todayKey,
+  whenBucket,
+} from './utils/time.js'
 import { readState, writeState, VIEWS } from './utils/urlState.js'
 import { parseQuery, matchesSearch } from './utils/search.js'
 import { watchableServices } from './utils/watch.js'
@@ -304,7 +311,8 @@ export default function App() {
             {LEAGUE.title} <span className="season">{SEASON}</span>
           </h1>
           <p className="tagline">
-            {LEAGUE.tagline}
+            {LEAGUE.tagline}{' '}
+            <span className="tz-abbr">({formatZoneAbbr(new Date().toISOString(), tz)})</span>
             {nLive > 0 && (
               <span className="live-now">
                 {' '}

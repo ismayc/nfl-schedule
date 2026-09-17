@@ -451,16 +451,31 @@ export default function App() {
           {filtersOpen && (
             <div className="filters-panel" id="filters-panel">
               <div className="filters">
-                <label className="field search-field">
-                  <span className="sr-only">Search games</span>
-                  <input
-                    className="search"
-                    type="search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder='Search — try "team: Chiefs" or "city: Kansas City"'
-                  />
-                </label>
+                {/* Search and its example chips share a focus-within group so the
+                    chips reveal only while the search is in use, and a chip click
+                    (focus lands on the chip, still inside the group) does not make
+                    them vanish before it registers. */}
+                <div className="search-group">
+                  <label className="field search-field">
+                    <span className="sr-only">Search games</span>
+                    <input
+                      className="search"
+                      type="search"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder='Search — try "team: Chiefs" or "city: Kansas City"'
+                    />
+                  </label>
+                  <div className="search-hints">
+                    <span className="hint-label">Try:</span>
+                    {SEARCH_EXAMPLES.map((ex) => (
+                      <button key={ex} className="hint-chip" onClick={() => setSearch(ex)}>
+                        {ex}
+                      </button>
+                    ))}
+                    <span className="hint-note">fields: team · city · venue · broadcast</span>
+                  </div>
+                </div>
                 <label className="field">
                   <span className="sr-only">Team</span>
                   <select value={team} onChange={(e) => setTeam(e.target.value)}>
@@ -522,15 +537,6 @@ export default function App() {
                     <TeamLogo abbr={team} size={18} /> Clear
                   </button>
                 )}
-              </div>
-              <div className="search-hints">
-                <span className="hint-label">Try:</span>
-                {SEARCH_EXAMPLES.map((ex) => (
-                  <button key={ex} className="hint-chip" onClick={() => setSearch(ex)}>
-                    {ex}
-                  </button>
-                ))}
-                <span className="hint-note">fields: team · city · venue · broadcast</span>
               </div>
               <div className="phase-chips when-chips">
                 <span className="hint-label">When:</span>

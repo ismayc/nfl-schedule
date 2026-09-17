@@ -359,7 +359,10 @@ select:hover,
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  align-items: center;
+  /* Top-aligned so the controls beside the search stay level with the input when
+     its example chips drop in on focus, rather than centering against the taller
+     group. */
+  align-items: flex-start;
   margin-bottom: 16px;
 }
 
@@ -436,8 +439,16 @@ select:hover,
   margin-bottom: 0;
 }
 
-.search-field {
+/* The search field plus its example chips. Carries the flex the search-field
+   used to, so the row still gives the search the room it had. */
+.search-group {
   flex: 1 1 260px;
+  min-width: 0;
+}
+
+.search-field {
+  display: block;
+  width: 100%;
 }
 
 .search {
@@ -454,12 +465,18 @@ select:hover,
   color: var(--text-faint);
 }
 
+/* The example chips are hidden until the search area is in use, then revealed
+   under the field. :focus-within on the shared group keeps them up while a chip
+   itself holds focus, so a chip click lands before they close. */
 .search-hints {
-  display: flex;
+  display: none;
   flex-wrap: wrap;
   align-items: center;
   gap: 7px;
   margin-top: 10px;
+}
+.search-group:focus-within .search-hints {
+  display: flex;
 }
 
 .hint-label {

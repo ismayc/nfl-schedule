@@ -1716,7 +1716,9 @@ button.drill-row:hover {
   position: absolute;
   top: 4px;
   height: 10px;
-  width: var(--w);
+  /* --arm-scale shrinks the arms on a narrow track so the value label always clears
+     the longest bar; it's 1 on desktop (see the mobile override). */
+  width: calc(var(--w) * var(--arm-scale, 1));
 }
 
 .margin-bar.pos {
@@ -1744,11 +1746,11 @@ button.drill-row:hover {
    clamped so a long bar in a narrow track can't push the label out of the card.
    The reserve matches the widest label ("−10.0"). */
 .margin-label.pos {
-  left: min(calc(50% + var(--w, 0%) + 6px), calc(100% - 34px));
+  left: min(calc(50% + var(--w, 0%) * var(--arm-scale, 1) + 6px), calc(100% - 34px));
 }
 
 .margin-label.neg {
-  right: min(calc(50% + var(--w, 0%) + 6px), calc(100% - 34px));
+  right: min(calc(50% + var(--w, 0%) * var(--arm-scale, 1) + 6px), calc(100% - 34px));
 }
 
 .margin-split {
@@ -3004,6 +3006,12 @@ button.drill-row:hover {
 
   .margin-split {
     display: none;
+  }
+
+  /* The track is much narrower now, so shrink the arms to keep the longest bar's value
+     label (a top or bottom team's margin, e.g. "+24.0" / "−24.0") from overrunning it. */
+  .margin {
+    --arm-scale: 0.68;
   }
 
   .tiles {

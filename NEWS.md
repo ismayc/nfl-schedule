@@ -6,6 +6,14 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-09-19
 
+- **Scoring-margin labels no longer sit on top of their own bar on a phone.**
+  At 390px the widest bars (the Jaguars at +24.0, the Browns at −24.0) ran under
+  their value label, because the label is clamped to stay inside the card. The
+  NBA and March Madness viewers already shrink the bars on a narrow track with
+  `--arm-scale: 0.68`, which this viewer never got; it is ported here verbatim.
+  Found by a family-wide scan at 390px that flags a value label overlapping its
+  bar and rows whose only label is hidden.
+
 - **A third data refresh on Sundays.** `refresh-data.yml` gains a Sunday-only cron at
   23:45 UTC, after the late afternoon window ends, so the committed snapshot picks up
   the day's early and late finals that evening instead of at Monday's 09:15 UTC run.

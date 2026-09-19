@@ -7,7 +7,12 @@ name: Refresh data
 # fails here instead of shipping.
 #
 # Early morning UTC (after every West-coast game has finished) and mid-afternoon UTC
-# (catches afternoon tips and schedule changes).
+# (catches afternoon tips and schedule changes). A third run on Sundays only, at 23:45
+# UTC, lands after the late afternoon window (4:05/4:25 ET kickoffs end by about 7:30
+# ET), so the snapshot carries the day's early and late finals that evening instead of
+# waiting for Monday's 09:15. Visitors see live scores either way; this only moves when
+# the committed snapshot catches up. GitHub often starts scheduled runs hours late (see
+# the data-freshness workflow), so treat these times as earliest starts.
 #
 # A RED RUN MEANS ONE OF THREE THINGS, and they used to send the same email. Fourteen
 # days of failures across the family (August 23 to September 6, 2026) sorted into:
@@ -37,6 +42,7 @@ on:
   schedule:
     - cron: '15 9 * * *'
     - cron: '15 19 * * *'
+    - cron: '45 23 * * 0'
   workflow_dispatch:
 
 permissions:

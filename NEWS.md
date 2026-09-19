@@ -6,6 +6,10 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-09-19
 
+- **A third data refresh on Sundays.** `refresh-data.yml` gains a Sunday-only cron at
+  23:45 UTC, after the late afternoon window ends, so the committed snapshot picks up
+  the day's early and late finals that evening instead of at Monday's 09:15 UTC run.
+  Visitors already see live scores; this only moves when the snapshot catches up.
 - **A refresh can no longer move the coverage gate, by construction.** Ported from the
   WNBA and NBA siblings. This repo's own week-1 refresh went red on September 6 on two
   tests asserting the player table was empty. 15 of 45 test files imported the live data

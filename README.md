@@ -121,7 +121,8 @@ than a flat "every team plays 17".
 ```bash
 npm install
 npm run dev              # local dev server
-npm test                 # unit + render tests
+npm test                 # unit + render tests, against frozen data
+npm run test:data        # the live suite: the real committed data (what a refresh must pass)
 npm run test:coverage    # tests with coverage (100% enforced)
 npm run build            # production bundle
 npm run coverage:badge   # tests with coverage, writes public/coverage.json
@@ -139,6 +140,23 @@ so CI can run the data jobs on a bare checkout with no install step. A CI job en
 The suite leans on real data rather than hand-made fixtures, because real data contains the
 edge cases you wouldn't think to invent. Coverage is enforced at **100%** in CI
 (`vite.config.js` thresholds), so an untested branch fails the build.
+
+Real, but frozen. There are two suites, and they never mix:
+
+- **The main suite** (`npm test`, the 100% coverage gate) never sees the modules the
+  refresh rewrites. A plugin in `vite.config.js` resolves every import of
+  `src/data/schedule.js`, `leaders.js`, and `teams.js` to a frozen week-2 stand-in under
+  `test/fixtures/frozen/`, whoever the importer is. Coverage therefore cannot move when
+  the data does: the gate passes unchanged with those three modules made to throw on
+  import.
+- **The live suite** (`npm run test:data`, `test/live/`) reads the real modules and has no
+  coverage threshold. It holds invariants (the season's shape, unique ids, known teams,
+  finite stats, standings that recount W-L-T from the games, division winners seeded
+  first) and a smoke render of every view, every game dialog, and every team panel,
+  checked for the residue of a bad value (`NaN`, `Invalid Date`, 1969). This is the gate
+  a refresh has to pass. Only things true on any day of any season belong in it; it
+  passes on both this week's board and the whole 2025 season, tie and postseason
+  included.
 
 - **Standings** are derived from a real completed season (`test/fixtures/season-2025.js`)
   and checked to match ESPN's published W-L-T for all 32 teams.

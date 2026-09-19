@@ -1,18 +1,21 @@
-// Data-integrity tests for the LIVE committed schedule.
+// Data-integrity tests for the LIVE committed schedule. LIVE suite (npm run test:data):
+// moved here from test/schedule-data.test.js on September 19, 2026, when the main suite's
+// data was frozen, because under the freeze it would have been checking a fixture that
+// never changes.
 //
-// Almost every other suite now runs against a frozen board (season-2025.js for a
-// completed season, preseason-2026.js for an unplayed one), which is what keeps them
-// from breaking the day the season starts. The cost of that is that the refresh
-// workflow's gate no longer sees the regenerated schedule at all: a malformed
-// src/data/schedule.js could sail through and get committed to main.
+// Every other suite runs against a frozen board (season-2025.js for a completed season,
+// preseason-2026.js for an unplayed one, and the frozen stand-ins for everything that imports
+// the data modules), which is what keeps them from breaking as the season moves. The
+// cost of that is that the main suite no longer sees the regenerated schedule at all: a
+// malformed src/data/schedule.js could sail through and get committed to main.
 //
 // This file is that gate. It asserts the properties a correct NFL schedule has in
 // every state the season passes through, so it holds on opening day and in February
 // alike. Nothing here may assume how much has been played.
 
 import { describe, it, expect } from 'vitest'
-import { GAMES, SEASON_TYPES } from '../src/data/schedule.js'
-import { ALL_ABBRS, SEASON } from '../src/data/teams.js'
+import { GAMES, SEASON_TYPES } from '../../src/data/schedule.js'
+import { ALL_ABBRS, SEASON } from '../../src/data/teams.js'
 
 const regular = GAMES.filter((g) => g.seasonType === 'regular')
 const postseason = GAMES.filter((g) => g.seasonType === 'postseason')

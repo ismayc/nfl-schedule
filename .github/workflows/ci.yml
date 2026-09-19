@@ -31,6 +31,12 @@ jobs:
       # Runs the full suite AND writes public/coverage.json for the README badge.
       # Replaces a separate `npm test` step so the suite isn't run twice.
       - run: npm run coverage:badge
+      # The main suite above reads FROZEN data (the frozenData plugin in vite.config.js),
+      # so it says nothing about the committed data modules. This does: the live suite in
+      # test/live/, the same gate refresh-data.yml runs, against what is committed now.
+      # It is also where a too-strict live invariant or a fetch-script shape change gets
+      # caught at the keyboard instead of blocking a 5am refresh.
+      - run: npm run test:data
       - run: npm run build
       - uses: actions/upload-pages-artifact@v5
         with:
@@ -117,18 +123,20 @@ jobs:
         run: |
           if git diff --quiet -- src/data public/logos; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "The next refresh would change nothing; the main suite already covers this state." >> "$GITHUB_STEP_SUMMARY"
+            echo "The next refresh would change nothing; the test job's live suite already covers this state." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             { echo "### The next refresh would change"; echo '```'; git diff --stat -- src/data public/logos; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           fi
       # The SAME gate the refresh workflow runs, so a pass here means that run will pass.
+      # That gate is the live suite, not the coverage gate: the main suite reads frozen
+      # data, so fetched data cannot change its result.
       - name: Run the gate against it
         if: steps.diff.outputs.changed == 'true'
         shell: bash
         run: |
           npm ci
-          npm run coverage:badge
+          npm run test:data
 
   # Clock rehearsal: the suite at seven future instants with the committed data
   # untouched. What it finds is clock rot and nothing else: a week view that opens on

@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --no-file-parallelism",
+    "test:data": "LIVE_DATA=1 vitest run",
     "coverage:badge": "vitest run --coverage --no-file-parallelism && node scripts/coverage-badge.mjs",
     "fetch:schedule": "node scripts/fetch-schedule.mjs",
     "fetch:history": "node scripts/fetch-history.mjs",

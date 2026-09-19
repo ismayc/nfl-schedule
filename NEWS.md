@@ -4,6 +4,35 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-19
+
+- **A refresh can no longer move the coverage gate, by construction.** Ported from the
+  WNBA and NBA siblings. This repo's own week-1 refresh went red on September 6 on two
+  tests asserting the player table was empty. 15 of 45 test files imported the live data
+  modules, and 18 source files read them. A plugin in `vite.config.js` now resolves every
+  import of `src/data/schedule.js`, `leaders.js`, and `teams.js` (the three modules the
+  refresh rewrites) to a frozen copy of the committed week-2 board (17 of 272 games
+  played) in `test/fixtures/frozen/`, matching on the resolved path so the importer does
+  not matter.
+- **Proven four ways.** The gate is unchanged: 100% on all four measures with the same
+  totals as before (2074 statements, 1637 branches, 699 functions, 1649 lines). With all
+  three live modules made to throw on import, the gate still passes, so nothing in the
+  main suite reaches them. A null kickoff, an unknown team, and a string-valued stat
+  planted in the live data failed six live tests. And the live suite passes on the whole
+  2025 season (272 regular-season games including a tie, and all 13 postseason games), so
+  none of its invariants will raise a false alarm in December or January.
+- **The refresh gate is now a live suite, not the coverage gate.** `npm run test:data`
+  runs `test/live/`: the schedule integrity checks (moved from
+  `test/schedule-data.test.js`), invariants on the player table and the standings, a
+  parity check that the frozen stand-ins export what the live modules export, and a smoke
+  render of all six views, every game dialog, and every team panel. Two NFL rules shape
+  the standings checks where the basketball siblings' versions would be wrong: a
+  regular-season tie is legal (half a win), and the seeds are not in win-percentage order,
+  because the four division winners take seeds 1 to 4 whatever their record.
+- **CI runs both.** The `test` job runs the live suite against the committed data after
+  the coverage gate, and `Gate against the next refresh` runs it against freshly fetched
+  data. Five new guards in `test/guards.test.js` keep the arrangement from eroding.
+
 ## 2026-09-18
 
 - **Fixed the scrunched Game leaders block in the game pop-out on a phone.** The two

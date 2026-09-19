@@ -4,6 +4,23 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-18
+
+- **Fixed the scrunched Game leaders block in the game pop-out on a phone.** The two
+  teams were fixed halves, about 170px each on a phone, and each row was a
+  `30px 1fr auto` grid. An NFL stat line is long ("35/56, 410 YDS, 3 TD, 2 INT" is 27
+  characters), the `auto` column took all of it, and the name beside it shrank to
+  "J. A…" or to nothing at all. The same arithmetic failed on the 560px desktop pop-out
+  for any quarterback line. The teams now sit side by side only when each half can be
+  300px (the wide desktop pop-out) and stack otherwise, and a row is a wrapping flex line:
+  the name is never cut, and when the name and the stat line cannot share a line, the
+  stat line drops beneath it, still right-aligned. Measured in the browser from 320px to
+  900px with the longest name and longest stat line in the data: nothing cut, nothing
+  overflowing.
+- **A team with no leaders is no longer drawn as an empty card.** The feed names one
+  leader per category per game, so one team can hold all three. The other was rendered
+  anyway as a header over nothing, in 23 of the first 48 games with leaders.
+
 ## 2026-09-16
 
 - **Fixed the squished "Next up" rows in a team's Standings pop-out.** The `.drill`

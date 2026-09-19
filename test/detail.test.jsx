@@ -190,6 +190,23 @@ describe('GameDetail — game leaders', () => {
     expect(screen.getByText('sacks')).toBeInTheDocument()
   })
 
+  // The feed names one leader per category per GAME, so one team can hold all three. The
+  // other used to be drawn anyway, as a header over an empty card (23 of the first 48
+  // games with leaders).
+  it('leaves out a team that holds none of the leaders', () => {
+    const { container } = open({
+      ...regGame,
+      stars: [
+        { cat: 'passingYards', v: '26/38, 327 YDS, 4 TD', who: 'A. Passer', team: regGame.home },
+        { cat: 'rushingYards', v: '21 CAR, 135 YDS, 1 TD', who: 'B. Runner', team: regGame.home },
+      ],
+    })
+    const cards = [...container.querySelectorAll('.gl-team')]
+    expect(cards).toHaveLength(1)
+    expect(cards[0].querySelector('.gl-head').textContent).toBe(regGame.home)
+    expect(cards[0].querySelectorAll('.gl-row')).toHaveLength(2)
+  })
+
   it('renders nothing when no leader belongs to either team', () => {
     const { container } = open({
       ...regGame,

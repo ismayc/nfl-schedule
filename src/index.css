@@ -2589,10 +2589,15 @@ button.drill-row:hover {
   border-left: 1px solid var(--border);
 }
 
-/* Game leaders */
+/* Game leaders.
+   An NFL stat line is long ("35/56, 410 YDS, 3 TD, 2 INT" is 27 characters), which is
+   what separates this from the basketball siblings, whose "28 PTS" fits anywhere. Two
+   fixed halves gave each team about 170px on a phone, the value took all of it, and the
+   name beside it collapsed to "J. A…" or to nothing. So the teams sit side by side only
+   when each half can be 300px (the wide desktop modal) and stack otherwise. */
 .leaders-split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 10px;
 }
 
@@ -2614,28 +2619,33 @@ button.drill-row:hover {
   border-bottom: 1px solid var(--border);
 }
 
+/* A wrapping flex row, not a grid: the name is never truncated, and when the name and
+   the stat line cannot share a line, the stat line drops beneath it, still right-aligned.
+   The old `30px 1fr auto` grid let the `auto` value starve the `1fr` name to zero width. */
 .gl-row {
-  display: grid;
-  grid-template-columns: 30px 1fr auto;
-  gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
   align-items: baseline;
   font-size: 12.5px;
   padding: 2px 0;
 }
 
 .gl-cat {
+  flex: 0 0 30px;
   font-size: 10px;
   color: var(--text-faint);
   letter-spacing: 0.04em;
 }
 
 .gl-who {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 1 1 auto;
   white-space: nowrap;
 }
 
 .gl-v {
+  margin-left: auto;
+  text-align: right;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }

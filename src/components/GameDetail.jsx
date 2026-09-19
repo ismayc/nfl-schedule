@@ -121,11 +121,12 @@ const CAT_LABEL = { passingYards: 'PASS', rushingYards: 'RUSH', receivingYards: 
 
 function GameLeaders({ game }) {
   if (!(game.stars?.length > 0)) return null
-  const byTeam = [game.away, game.home].map((abbr) => ({
-    abbr,
-    rows: game.stars.filter((s) => s.team === abbr),
-  }))
-  if (!byTeam.some((t) => t.rows.length > 0)) return null
+  // One leader per category per GAME, so one team can hold all three and the other none.
+  // A team with none is left out rather than drawn as a header over an empty card.
+  const byTeam = [game.away, game.home]
+    .map((abbr) => ({ abbr, rows: game.stars.filter((s) => s.team === abbr) }))
+    .filter((t) => t.rows.length > 0)
+  if (byTeam.length === 0) return null
 
   return (
     <>

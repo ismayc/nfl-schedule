@@ -363,8 +363,8 @@ export const CONFERENCE_BY_ABBR = {
   "ATL": "NFC",
   "SEA": "NFC",
   "SF": "NFC",
-  "ARI": "NFC",
-  "LAR": "NFC"
+  "LAR": "NFC",
+  "ARI": "NFC"
 }
 
 export const DIVISION_BY_ABBR = {
@@ -398,6 +398,6 @@ export const DIVISION_BY_ABBR = {
   "ATL": "NFC South",
   "SEA": "NFC West",
   "SF": "NFC West",
-  "ARI": "NFC West",
-  "LAR": "NFC West"
+  "LAR": "NFC West",
+  "ARI": "NFC West"
 }

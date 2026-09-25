@@ -4,6 +4,22 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-25
+
+- **Postseason games will reach the schedule as soon as ESPN posts them.** ESPN's
+  per-team schedule feed lags the bracket by days: on September 25 the WNBA sibling's
+  feed was empty for every team while the scoreboard already listed the first round,
+  and its playoffs had to be forced in by hand. This viewer read the postseason only
+  from that same per-team feed. `scripts/fetch-schedule.mjs` now also reads the
+  scoreboard from the last regular-season day through the next seven weeks. There the
+  type lives only on `season.type` (the competition `type` is "STD", which the normal
+  parser would drop), so those games are read by it explicitly. Slots with "TBD" teams
+  and the Pro Bowl's AFC and NFC sides are skipped, and the team feed still wins for any
+  game both sources have. Checked against the real 2025 postseason: the scoreboard read
+  returns all 13 games with the same ids, rounds, home teams, and kickoffs as the
+  committed archive. Tests are in `test/postseason-feed.test.js`. The rule is now
+  family-wide in sports-viewer-meta (PLAYBOOK §2 trap 8, audit check 12).
+
 ## 2026-09-19
 
 - **Scoring-margin labels no longer sit on top of their own bar on a phone.**

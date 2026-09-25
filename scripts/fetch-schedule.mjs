@@ -62,11 +62,13 @@ function parseRound(notes) {
   return { round, note: headline }
 }
 
-function normalizeEvent(ev) {
+// `forcedType` is for events whose type sits somewhere else: a scoreboard event carries
+// it as `season.type`, and its competition `type` is "STD" (id 1), not a season type.
+function normalizeEvent(ev, forcedType) {
   const c = ev.competitions?.[0]
   if (!c) return null
 
-  const seasonType = SEASON_TYPE[ev.seasonType?.id ?? c.type?.id]
+  const seasonType = forcedType ?? SEASON_TYPE[ev.seasonType?.id ?? c.type?.id]
   if (!seasonType) return null // drops preseason
 
   const home = c.competitors?.find((t) => t.homeAway === 'home')
@@ -127,6 +129,41 @@ export async function fetchSchedule(teams, season = SEASON) {
     if (game) byId.set(game.id, game)
   }
   return [...byId.values()].sort((a, b) => a.tip.localeCompare(b.tip) || a.id.localeCompare(b.id))
+}
+
+// Postseason games from the scoreboard. The per-team schedule feed lags the bracket by
+// days: on 2026-09-25 it was empty for every WNBA team while the scoreboard already
+// listed the first round, and the playoffs reached that viewer only by hand. So the
+// scoreboard is read too, from the last regular-season day through the next seven weeks
+// (wild card to the Super Bowl is five; the 2025 run was January 10 to February 8). On
+// the scoreboard the type lives only on `season.type`. Slots whose teams are still "TBD"
+// are skipped until a later refresh finds them filled in, and so is the Pro Bowl, whose
+// AFC and NFC sides are not franchises. Pure, for tests. The shared rule is PLAYBOOK §2
+// trap 8 in sports-viewer-meta.
+const POSTSEASON_DAYS = 49
+
+export function postseasonFromScoreboard(events, knownAbbrs) {
+  const real = (t) => Number(t.team?.id) > 0 && knownAbbrs.has(t.team?.abbreviation)
+  return events
+    .filter((ev) => Number(ev.season?.type) === 3)
+    .filter((ev) => (ev.competitions?.[0]?.competitors || []).every(real))
+    .map((ev) => normalizeEvent(ev, 'postseason'))
+    .filter(Boolean)
+}
+
+const ymd = (iso) => iso.slice(0, 10).replaceAll('-', '')
+
+async function fetchPostseason(games, teams) {
+  const regular = games.filter((g) => g.seasonType === 'regular').map((g) => g.tip).sort()
+  if (!regular.length) return []
+  const last = regular.at(-1)
+  const end = new Date(Date.parse(last) + POSTSEASON_DAYS * 86400000).toISOString()
+  const pages = await mapLimit(expandDays(ymd(last), ymd(end)), CONCURRENCY, (day) =>
+    getJson(`${SITE}/${ESPN_PATH}/scoreboard?dates=${day}&limit=100`)
+  )
+  const byId = new Map()
+  for (const d of pages) for (const ev of d.events || []) byId.set(ev.id, ev)
+  return postseasonFromScoreboard([...byId.values()], new Set(teams.map((t) => t.abbr)))
 }
 
 // Conference + division membership. The teams feed carries neither (PLAYBOOK §2, trap 1),
@@ -458,6 +495,13 @@ async function main() {
 
   console.log('Fetching schedules…')
   const games = await fetchSchedule(teams)
+  // The team feeds win where both have a game; the scoreboard only adds what they lack.
+  const have = new Set(games.map((g) => g.id))
+  const postseason = (await fetchPostseason(games, teams)).filter((g) => !have.has(g.id))
+  if (postseason.length) {
+    games.push(...postseason)
+    games.sort((a, b) => a.tip.localeCompare(b.tip) || a.id.localeCompare(b.id))
+  }
   const counts = games.reduce((a, g) => ({ ...a, [g.seasonType]: (a[g.seasonType] || 0) + 1 }), {})
   console.log(`  ${games.length} games`, counts)
 

@@ -62,6 +62,23 @@ describe('the ESPN host', () => {
   })
 })
 
+describe('the new-season watch', () => {
+  // The watch probes every day of a season, one scoreboard request each (about 150 a
+  // run since ESPN dropped date-range queries), and a single 5xx that outlasts the
+  // retries fails the whole run. fetchRetry's default of 5 tries is about 15 s of
+  // backoff, and on September 26, 2026 one 502 burst on one day outlasted it in the
+  // WNBA watch while the refresh two minutes later succeeded. The shape of the mistake:
+  // a port or a cleanup drops the budget back to the default, and the daily watch
+  // reddens on ESPN blips.
+  it('gives each scoreboard day a longer retry budget than the refresh', () => {
+    const src = read('scripts/check-new-season.mjs')
+    const tries = src.match(/^const WATCH_TRIES = (\d+)$/m)
+    expect(tries, 'no WATCH_TRIES constant').not.toBeNull()
+    expect(Number(tries[1])).toBeGreaterThanOrEqual(8)
+    expect(src).toMatch(/getJson\(`[^`]*scoreboard[^`]*`, WATCH_TRIES\)/)
+  })
+})
+
 describe('the storage namespace', () => {
   // The hub and all the sibling viewers are served from one origin
   // (ismayc.github.io), so localStorage is shared. A key prefix borrowed from a

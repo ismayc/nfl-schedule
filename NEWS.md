@@ -4,6 +4,18 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-26
+
+- **The new-season watch rides out ESPN 502 bursts.** The WNBA sibling's daily run
+  failed today because one of the roughly 200 scoreboard days it probes answered
+  HTTP 502 five times in a row, which is the whole default retry budget (about 15
+  seconds of backoff). The refresh two minutes later succeeded and the re-run was
+  green, so it was an ESPN blip, not a bug. This watch has the identical loop over
+  about 150 days, so `scripts/check-new-season.mjs` now gives each day 8 tries (about
+  two minutes of backoff), since nothing waits on this job and a slow answer beats a
+  red one. A real outage still fails the run. A guard in `test/guards.test.js` pins
+  the budget so a port or cleanup cannot drop it back to the default.
+
 ## 2026-09-25
 
 - **Postseason games will reach the schedule as soon as ESPN posts them.** ESPN's

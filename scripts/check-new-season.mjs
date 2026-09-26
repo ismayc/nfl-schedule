@@ -73,11 +73,20 @@ const DAYS = MONTHS.flatMap(([from, to]) => expandDays(from, to))
 // new-season-watch.yml).
 const NOT_YET = /\bHTTP 40[04]\b/
 
+// A longer retry budget than the refresh gets. This probes about 150 days per run and
+// any one of them outlasting the retries fails the whole run, so the odds of a red
+// run scale with the day count. fetchRetry's default of 5 tries is about 15 s of
+// backoff; on September 26, 2026 the WNBA watch (run 36274585625) lost a run to a 502
+// burst on a single day while the refresh two minutes later succeeded. 8 tries is
+// about two minutes of backoff per day. Nothing waits on this job, so a slow answer
+// beats a red one; a real outage still fails, just later. The guards test pins this.
+const WATCH_TRIES = 8
+
 const games = new Map() // id → event, so overlapping days can't double-count
 let daysMissing = 0
 const pages = await mapLimit(DAYS, CONCURRENCY, async (day) => {
   try {
-    return await getJson(`${SITE}/scoreboard?dates=${day}&limit=1000`)
+    return await getJson(`${SITE}/scoreboard?dates=${day}&limit=1000`, WATCH_TRIES)
   } catch (err) {
     if (!NOT_YET.test(err.message)) throw err
     daysMissing++

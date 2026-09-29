@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { readState, toSearch, writeState, isValidZone, DEFAULTS } from '../src/utils/urlState.js'
+import { readState, toSearch, writeState, isValidZone, DEFAULTS, VIEWS } from '../src/utils/urlState.js'
 
 describe('readState', () => {
   it('falls back to defaults on an empty query', () => {
@@ -72,6 +72,15 @@ describe('isValidZone', () => {
     expect(isValidZone('Not/AZone')).toBe(false)
     expect(isValidZone(null)).toBe(false)
     expect(isValidZone('')).toBe(false)
+  })
+})
+
+describe('the scenarios view', () => {
+  it('is a shareable view, right after the standings in the nav', () => {
+    expect(readState('?view=scenarios').view).toBe('scenarios')
+    expect(toSearch({ view: 'scenarios' }, 'America/New_York')).toBe('?view=scenarios')
+    const ids = VIEWS.map((v) => v.id)
+    expect(ids.indexOf('scenarios')).toBe(ids.indexOf('standings') + 1)
   })
 })
 

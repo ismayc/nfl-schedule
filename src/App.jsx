@@ -21,6 +21,7 @@ import ServicesModal from './components/ServicesModal.jsx'
 import ScheduleView from './components/ScheduleView.jsx'
 import NextGame from './components/NextGame.jsx'
 import StandingsView from './components/StandingsView.jsx'
+import ScenariosView from './components/ScenariosView.jsx'
 import StatsView from './components/StatsView.jsx'
 import HistoryView from './components/HistoryView.jsx'
 import { HISTORY } from './data/history.js'
@@ -580,6 +581,7 @@ export default function App() {
           />
         )}
         {view === 'standings' && <StandingsView games={games} picture={picture} onPick={pickTeam} />}
+        {view === 'scenarios' && <ScenariosView games={games} tz={tz} onPick={pickTeam} />}
         {view === 'playoffs' && (
           <Bracket games={games} tz={tz} onPick={pickTeam} onOpen={setDetail} />
         )}

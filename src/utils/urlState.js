@@ -14,6 +14,7 @@ export const VIEWS = [
   { id: 'schedule', label: '📋 Schedule' },
   { id: 'week', label: '📆 Week' },
   { id: 'standings', label: '📊 Standings' },
+  { id: 'scenarios', label: '🔀 Scenarios' },
   { id: 'playoffs', label: '🏆 Playoffs' },
   { id: 'stats', label: '📈 Stats' },
   { id: 'history', label: '📜 History' },

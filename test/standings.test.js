@@ -136,6 +136,14 @@ describe('head-to-head', () => {
     const met = headToHead(GAMES_2025, 'KC', 'DEN')
     expect(met).not.toBeNull()
     expect(met.w + met.l + met.t).toBeGreaterThan(0)
+    const back = headToHead(GAMES_2025, 'DEN', 'KC')
+    expect([back.w, back.l, back.t]).toEqual([met.l, met.w, met.t])
+    // The title's first claim, asserted: two clubs that never met have no record at all
+    // (the head-to-head sweep used to reach this arm; it now reads the rows' results).
+    expect(headToHead([], 'KC', 'DEN')).toBeNull()
+    // A series of nothing but a tie is still a series.
+    const tieOnly = [{ id: 't', seasonType: 'regular', tip: '2026-10-01T17:00:00Z', home: 'KC', away: 'DEN', score: [20, 20] }]
+    expect(headToHead(tieOnly, 'KC', 'DEN')).toEqual({ w: 0, l: 0, t: 1 })
   })
 })
 

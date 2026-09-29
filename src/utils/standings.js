@@ -52,40 +52,51 @@ const blankRecord = (abbr) => ({
 const RESULT = { WIN: 'w', LOSS: 'l', TIE: 't' }
 const outcomeFor = (mine, theirs) => (mine === theirs ? RESULT.TIE : mine > theirs ? RESULT.WIN : RESULT.LOSS)
 
+// Book one final game into both clubs' rows. Split out of computeStandings so the
+// Scenarios engine can add a hypothetical result to a copy of the real table with this
+// same code, instead of recomputing all 272 games for every outcome it plays out.
+// Returns the abbrs whose rows changed (a club missing from the table is skipped).
+export function bookGame(table, g) {
+  const [hs, as] = g.score
+  const touched = []
+  for (const [abbr, side, mine, theirs, opp] of [
+    [g.home, 'home', hs, as, g.away],
+    [g.away, 'road', as, hs, g.home],
+  ]) {
+    const row = table[abbr]
+    if (!row) continue
+    const res = outcomeFor(mine, theirs)
+    row[res]++
+    row[side][res]++
+    row.pf += mine
+    row.pa += theirs
+    if (DIVISION_BY_ABBR[opp] === row.division) row.div[res]++
+    if (CONFERENCE_BY_ABBR[opp] === row.conference) row.conf[res]++
+    row.results.push({ id: g.id, res, opp, side, pf: mine, pa: theirs, tip: g.tip })
+    touched.push(abbr)
+  }
+  return touched
+}
+
+// The derived fields of one row, recomputed after its games are booked.
+export function finishRow(row) {
+  row.gp = row.w + row.l + row.t
+  row.pct = row.gp ? (row.w + row.t / 2) / row.gp : 0
+  row.diff = row.pf - row.pa
+  row.ppg = row.gp ? row.pf / row.gp : 0
+  row.oppPpg = row.gp ? row.pa / row.gp : 0
+  row.netPpg = row.ppg - row.oppPpg
+  row.last5 = row.results.slice(-5).map((r) => r.res)
+  row.streak = streakOf(row.results)
+}
+
 export function computeStandings(games) {
   const table = Object.fromEntries(TEAMS.map((t) => [t.abbr, blankRecord(t.abbr)]))
 
   const played = games.filter(countsForStandings).sort((a, b) => a.tip.localeCompare(b.tip))
 
-  for (const g of played) {
-    const [hs, as] = g.score
-    for (const [abbr, side, mine, theirs, opp] of [
-      [g.home, 'home', hs, as, g.away],
-      [g.away, 'road', as, hs, g.home],
-    ]) {
-      const row = table[abbr]
-      if (!row) continue
-      const res = outcomeFor(mine, theirs)
-      row[res]++
-      row[side][res]++
-      row.pf += mine
-      row.pa += theirs
-      if (DIVISION_BY_ABBR[opp] === row.division) row.div[res]++
-      if (CONFERENCE_BY_ABBR[opp] === row.conference) row.conf[res]++
-      row.results.push({ id: g.id, res, opp, side, pf: mine, pa: theirs, tip: g.tip })
-    }
-  }
-
-  for (const row of Object.values(table)) {
-    row.gp = row.w + row.l + row.t
-    row.pct = row.gp ? (row.w + row.t / 2) / row.gp : 0
-    row.diff = row.pf - row.pa
-    row.ppg = row.gp ? row.pf / row.gp : 0
-    row.oppPpg = row.gp ? row.pa / row.gp : 0
-    row.netPpg = row.ppg - row.oppPpg
-    row.last5 = row.results.slice(-5).map((r) => r.res)
-    row.streak = streakOf(row.results)
-  }
+  for (const g of played) bookGame(table, g)
+  for (const row of Object.values(table)) finishRow(row)
 
   return table
 }
@@ -178,6 +189,11 @@ function commonOpponents(group) {
 // step cannot decide for this club (the whole step is then skipped, per the official
 // "if not applicable, proceed" convention) — or { apply(group, ctx) } for the two steps
 // that aren't per-club values (the wild-card H2H sweep, the coin toss).
+//
+// Every step also carries a plain-English `label` (the Scenarios tab names the step that
+// broke a tie), and the steps that read points scored or allowed carry `scores: true`.
+// A hypothetical result (a game picked or enumerated on the Scenarios tab) has a winner
+// but no score, so those steps cannot be evaluated for it; see applyStep.
 
 // Division steps 1 (two-club: head-to-head) and 1 (three+: H2H pct in games AMONG the
 // tied clubs — percentage, not sweep). For two clubs the "games among the tied" ARE the
@@ -185,6 +201,7 @@ function commonOpponents(group) {
 // has no games within the group (possible only in synthetic data — division mates
 // always meet), the step cannot rank them all and is skipped.
 const h2hAmongTied = {
+  label: 'head-to-head',
   value: (r, group) => {
     const rec = recordVs(r, group.filter((o) => o !== r).map((o) => o.abbr))
     return rec.gp ? pctOf(rec) : null
@@ -192,15 +209,16 @@ const h2hAmongTied = {
 }
 
 // Division step 2: best W-L-T pct within the division.
-const divisionPct = { value: (r) => pctOf(r.div) }
+const divisionPct = { label: 'division record', value: (r) => pctOf(r.div) }
 
 // Division step 4 / wild-card step 2: best W-L-T pct within the conference.
-const conferencePct = { value: (r) => pctOf(r.conf) }
+const conferencePct = { label: 'conference record', value: (r) => pctOf(r.conf) }
 
 // Division step 3 (no minimum — division pairs always share ≥4 common opponents, so the
 // official text carries no gate) and wild-card step 3 (official MINIMUM OF FOUR common
 // games; fewer → the step is skipped). Compared by percentage, not raw record.
 const commonGames = (min) => ({
+  label: 'record in common games',
   value: (r, group) => {
     const rec = recordVs(r, commonOpponents(group))
     return rec.gp >= min ? pctOf(rec) : null
@@ -209,11 +227,17 @@ const commonGames = (min) => ({
 
 // Division step 5 / wild-card step 4: strength of victory — combined pct of every
 // opponent the club DEFEATED, counted per victory.
-const strengthOfVictory = { value: (r, _g, ctx) => combinedPct(beatenBy(r), ctx.table) }
+const strengthOfVictory = {
+  label: 'strength of victory',
+  value: (r, _g, ctx) => combinedPct(beatenBy(r), ctx.table),
+}
 
 // Division step 6 / wild-card step 5: strength of schedule — combined pct of ALL
 // opponents played, per game.
-const strengthOfSchedule = { value: (r, _g, ctx) => combinedPct(oppsOf(r), ctx.table) }
+const strengthOfSchedule = {
+  label: 'strength of schedule',
+  value: (r, _g, ctx) => combinedPct(oppsOf(r), ctx.table),
+}
 
 // Division steps 7–8 / wild-card steps 6–7: best combined ranking in points scored and
 // points allowed, among the club's conference (16 clubs) or the whole league (32).
@@ -221,6 +245,8 @@ const strengthOfSchedule = { value: (r, _g, ctx) => combinedPct(oppsOf(r), ctx.t
 // Lowest sum wins, so the value is negated. The table always carries all 32 clubs
 // (blankRecord seeds every team), so both pools are complete even in synthetic seasons.
 const combinedRank = (scope) => ({
+  label: `points ranking in the ${scope}`,
+  scores: true,
   value: (r, _g, ctx) => {
     const pool = Object.values(ctx.table).filter((x) => scope === 'league' || x.conference === r.conference)
     const scoredRank = 1 + pool.filter((x) => x.pf > r.pf).length
@@ -232,6 +258,8 @@ const combinedRank = (scope) => ({
 // Division step 9: best net points in COMMON games (the division chain's counterpart of
 // the wild-card chain's net-points-in-conference step). No common games → no decision.
 const netPointsCommon = {
+  label: 'net points in common games',
+  scores: true,
   value: (r, group) => {
     const rec = recordVs(r, commonOpponents(group))
     return rec.gp ? rec.net : null
@@ -241,37 +269,44 @@ const netPointsCommon = {
 // Wild-card step 8: best net points in CONFERENCE games (note: conference games here,
 // unlike the division chain's common games).
 const netPointsConference = {
+  label: 'net points in conference games',
+  scores: true,
   value: (r) => r.results.filter((x) => CONFERENCE_BY_ABBR[x.opp] === r.conference).reduce((n, x) => n + x.pf - x.pa, 0),
 }
 
 // Division step 10 / wild-card step 9: best net points in all games.
-const netPointsAll = { value: (r) => r.diff }
+const netPointsAll = { label: 'net points', scores: true, value: (r) => r.diff }
 
 // Division step 11 / wild-card step 10: best net touchdowns in all games — NOT
 // COMPUTABLE from the committed data (schedule rows carry final scores only, never
 // touchdown counts), so the step is recorded but can never decide.
-const netTouchdowns = { value: () => null }
+const netTouchdowns = { label: 'net touchdowns', value: () => null }
 
 // Division step 12 / wild-card step 11: coin toss. Deterministic alphabetical order is
 // our stand-in for the official coin toss — same trade every viewer in the family makes
 // for unknowable league randomness. Always resolves, so every chain terminates here.
 const coinToss = {
+  label: 'coin toss (alphabetical stand-in)',
   apply: (group) => [[...group].sort((a, b) => a.abbr.localeCompare(b.abbr))[0]],
 }
 
 // Wild-card step 2 (three+ clubs): head-to-head SWEEP only — it applies only if one
 // club beat every other tied club (advance it) or lost to every other (eliminate it).
 // A split, a tie, or an unplayed pairing leaves the step undecided.
-const beatAllMeetings = (h) => !!h && h.l + h.t === 0
-const lostAllMeetings = (h) => !!h && h.w + h.t === 0
+// The meetings are read from the row's own results (the same completed games
+// headToHead() would find by rescanning the whole schedule, which the Scenarios tab
+// measured as the single most expensive call when it seeds hundreds of seasons).
+const beatAllMeetings = (h) => h.gp > 0 && h.l + h.t === 0
+const lostAllMeetings = (h) => h.gp > 0 && h.w + h.t === 0
 const h2hSweep = {
-  apply: (group, ctx) => {
+  label: 'head-to-head sweep',
+  apply: (group) => {
     const sweeper = group.find((r) =>
-      group.every((o) => o === r || beatAllMeetings(headToHead(ctx.games, r.abbr, o.abbr)))
+      group.every((o) => o === r || beatAllMeetings(recordVs(r, [o.abbr])))
     )
     if (sweeper) return [sweeper]
     return group.filter(
-      (r) => !group.every((o) => o === r || lostAllMeetings(headToHead(ctx.games, r.abbr, o.abbr)))
+      (r) => !group.every((o) => o === r || lostAllMeetings(recordVs(r, [o.abbr])))
     )
   },
 }
@@ -320,7 +355,14 @@ const WILDCARD_MULTI_STEPS = [
 // Apply one step to the surviving group: keep the club(s) with the best value. A step
 // any club cannot answer (null) is skipped whole — official steps rank every tied club
 // or none.
+//
+// `ctx.choose` is set only by the Scenarios engine (utils/scenarios.js), whose seasons
+// contain results with no score. A points step cannot be evaluated there, so instead of
+// guessing it hands the surviving clubs to `choose`, which names the club the unknown
+// points favor; the engine re-runs the seeding once for every club it could name. Real
+// standings never set it, so every real table is ranked exactly as before.
 function applyStep(step, group, ctx) {
+  if (step.scores && ctx.choose) return [ctx.choose(group)]
   if (step.apply) return step.apply(group, ctx)
   const vals = group.map((r) => step.value(r, group, ctx))
   if (vals.some((v) => v == null)) return group
@@ -332,12 +374,21 @@ function applyStep(step, group, ctx) {
 // RESTART RULE: when clubs are eliminated at any step, two remaining clubs restart at
 // step 1 of the TWO-club chain; three remaining (from four+) restart at step 2 of the
 // multi-club chain. The coin toss terminates every chain, so the loop always returns.
+// With `ctx.trace` (an array) every step that separated clubs is recorded as
+// { teams, step } so the Scenarios tab can say which tiebreaker decided a place.
 function resolveOne(group, twoSteps, multiSteps, ctx) {
   let steps = [...(group.length === 2 ? twoSteps : multiSteps), coinToss]
   let survivors = group
   let i = 0
   for (;;) {
     const next = applyStep(steps[i], survivors, ctx)
+    if (next.length < survivors.length) {
+      ctx.trace?.push({
+        teams: survivors.map((r) => r.abbr),
+        step: steps[i].label,
+        scores: Boolean(steps[i].scores),
+      })
+    }
     if (next.length === 1) return next[0]
     if (next.length < survivors.length) {
       survivors = next
@@ -393,11 +444,13 @@ function orderDivisionGroup(group, ctx) {
 }
 
 // Rows of one division, ranked by the official division procedures. The top row is the
-// division winner.
-export function divisionStandings(games, table = computeStandings(games)) {
-  const ctx = { games, table }
+// division winner. `opts.divisions` limits the work to some divisions (seeding one
+// conference needs only its own four); `opts.choose` and `opts.trace` are the Scenarios
+// hooks described at applyStep and resolveOne.
+export function divisionStandings(games, table = computeStandings(games), opts = {}) {
+  const ctx = { games, table, ...opts }
   const out = {}
-  for (const div of DIVISIONS) {
+  for (const div of opts.divisions ?? DIVISIONS) {
     const rows = Object.values(table).filter((r) => r.division === div)
     rows.sort((a, b) => b.pct - a.pct)
     const ordered = pctGroups(rows).flatMap((g) => (g.length === 1 ? g : orderDivisionGroup(g, ctx)))
@@ -424,6 +477,9 @@ function onePerDivision(group, frozenRank) {
 // the two-club or three+-club wild-card chain among the division representatives.
 function wildCardWinner(group, frozenRank, ctx) {
   const reps = onePerDivision(group, frozenRank)
+  if (reps.length < group.length) {
+    ctx.trace?.push({ teams: group.map((r) => r.abbr), step: 'one club per division', scores: false })
+  }
   if (reps.length === 1) return reps[0]
   return resolveOne(reps, WILDCARD_TWO_STEPS, WILDCARD_MULTI_STEPS, ctx)
 }
@@ -448,10 +504,14 @@ function orderBySelection(rows, frozenRank, ctx) {
 // The playoff seeding for one conference: 1–4 are the division winners (ranked among
 // themselves — ties among division winners are broken with the WILD-CARD procedures,
 // per the official seeding rule), 5–7 the wild cards in the order the repeated
-// selection produced. A division winner always outranks every wild card.
-function seedConference(confKey, games, table) {
-  const ctx = { games, table }
-  const divs = divisionStandings(games, table)
+// selection produced. A division winner always outranks every wild card. `opts` carries
+// the Scenarios hooks (choose, trace); conferenceSeeds and playoffPicture pass none.
+export function seedConference(confKey, games, table, opts = {}) {
+  const ctx = { games, table, ...opts }
+  const divs = divisionStandings(games, table, {
+    ...opts,
+    divisions: DIVISION_ORDER.map((d) => `${confKey} ${d}`),
+  })
 
   // Freeze each division's internal order now; every one-club-per-division elimination
   // below reuses it (official frozen-order rule).

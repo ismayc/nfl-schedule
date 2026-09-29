@@ -6,6 +6,37 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-09-29
 
+- **A Scenarios tab: every way the playoff seeds can still land.** Ported from the WNBA
+  viewer's tab (September 23), with its follow-up fixes built in: rows that add up to
+  exactly 100%, the playoff line, check and X marks, the exact combinations of results
+  behind a tapped cell, and the breakdown opening under its own row. Pick a result for
+  any game that is left, or tap Favorites win. Once 6 or fewer games are open league-wide,
+  every combination of them is played out and a grid per conference (AFC or NFC) shows
+  the share of outcomes that lands each team at each seed, 1 to 7 or Out. The NFL
+  differs from the WNBA in three ways, and the tab follows the NFL:
+  - Every open game is played out three ways (a win, a loss, or a tie), so 6 open games
+    make 729 complete seasons. A combination can read "KC beats or ties DEN".
+  - Every season is seeded by this repo's own division and wild-card procedures in
+    `standings.js`; there is no second tiebreak implementation. Games in both
+    conferences count, because strength of victory and strength of schedule read
+    records across the whole league.
+  - A picked game has no score, so when a tie gets past strength of schedule to the
+    points steps, the seeding is re-run once for every club the points could favor, and
+    the seeds it reaches are marked * ("depends on points"), never shown as settled.
+  With more than 6 games open, the tab says how many and asks for more picks rather than
+  estimating. A game in progress stays open until it is final, whatever its live score.
+  Measured on September 29, 2026, for 729 outcomes: 26 to 57 ms in headless Chrome on
+  late-season boards (2025 with weeks 17 and 18 open) and on the frozen 2026 board, and
+  136 ms when every picked game is a tie. Picks that leave 32 identical records (every
+  game a tie, or every home team winning) took 1 to 2 seconds, so a 200 ms guard now
+  stops the run and asks for different picks instead of freezing the page. The engine
+  was checked against the repo's own seeding on 38,400 team placements with random real
+  scores, ties included, and no team landed outside the seeds the grid gave it.
+  `standings.js` gains labels on every tiebreak step, an optional trace of which step
+  broke each tie, and a hook for the points steps; real standings are ranked exactly as
+  before. The wild-card head-to-head sweep now reads each club's own results instead of
+  rescanning the schedule for every pair (same answer), which roughly halved the
+  Scenarios engine's time on the frozen board.
 - **The footer now shows when the committed data last changed.** Ported from the WNBA
   viewer. It reads "Data as of Sep 28, 4:49 PM" in the selected time zone, next to the
   live poll's time, now labeled "Live scores checked" so the two are distinguishable. The

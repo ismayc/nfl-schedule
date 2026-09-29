@@ -6,6 +6,16 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-09-29
 
+- **The footer now shows when the committed data last changed.** Ported from the WNBA
+  viewer. It reads "Data as of Sep 28, 4:49 PM" in the selected time zone, next to the
+  live poll's time, now labeled "Live scores checked" so the two are distinguishable. The
+  old "Updated" time only said when the browser last reached ESPN, which stays fresh even
+  when the refresh pipeline has stalled and the schedule, results, and leaders are days
+  old. The stamp lives in `src/data/meta.js`, and `scripts/fetch-schedule.mjs` rewrites it
+  only when a data file or a logo actually changes (`scripts/lib/stamp.mjs` compares each
+  output to what is on disk), so a refresh with nothing new still produces no diff, no
+  commit, and no deploy. Tests read a frozen stamp, and a missing or unparseable stamp
+  shows nothing rather than a wrong date.
 - **The data-freshness monitor now says "unknown" when it cannot read the run history.**
   Before, a GitHub API outage that failed every listing call looked the same as a dead
   pipeline: the run went red and filed "Refresh has not landed for days", a claim

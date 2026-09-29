@@ -8,7 +8,7 @@
 //
 //   node scripts/fetch-schedule.mjs [--season 2026] [--no-logos]
 
-import { writeFile, mkdir, readFile } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
@@ -25,9 +25,16 @@ import {
   expandDays,
   banner,
 } from './lib/espn.mjs'
+import { createDataWriter } from './lib/stamp.mjs'
 import { SEASON as COMMITTED_SEASON, TEAMS as COMMITTED_TEAMS } from '../src/data/teams.js'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+
+// Every generated file (the data modules and the logos) is written through this, which
+// skips a file whose bytes have not changed and, on the first one that has, rewrites
+// src/data/meta.js with the time. That stamp is the footer's "Data as of", and it moves
+// only when the data does. See scripts/lib/stamp.mjs.
+const data = createDataWriter(join(ROOT, 'src/data/meta.js'))
 const ESPN_PATH = 'football/nfl'
 const args = process.argv.slice(2)
 // An NFL season is named for its September. The default is the season the app is
@@ -364,7 +371,7 @@ async function mirrorLogos(teams) {
   let bytes = 0
   const grab = async (url) => Buffer.from(await (await fetchRetry(resized(url))).arrayBuffer())
   const put = async (file, buf) => {
-    await writeFile(join(ROOT, 'public/logos', file), buf)
+    await data.write(join(ROOT, 'public/logos', file), buf)
     n++
     bytes += buf.length
   }
@@ -518,7 +525,7 @@ async function main() {
 
   const teamData = teams.map(({ logo, logoDark, ...t }) => t)
 
-  await writeFile(
+  await data.write(
     join(ROOT, 'src/data/teams.js'),
     banner(`${SITE}/${ESPN_PATH}/teams + standings?level=3`) +
       `export const SEASON = ${SEASON}\n\n` +
@@ -531,7 +538,7 @@ async function main() {
       `export const DIVISION_BY_ABBR = ${JSON.stringify(div, null, 2)}\n`
   )
 
-  await writeFile(
+  await data.write(
     join(ROOT, 'src/data/schedule.js'),
     banner(`${SITE}/${ESPN_PATH}/teams/{abbr}/schedule?season=${SEASON}&seasontype=2,3`) +
       `export const GAMES = [\n` +
@@ -544,7 +551,7 @@ async function main() {
   const leaders = await fetchLeaders()
   console.log(`  ${leaders.length} qualified players`)
 
-  await writeFile(
+  await data.write(
     join(ROOT, 'src/data/leaders.js'),
     banner(`${WEB}/${ESPN_PATH}/statistics/byathlete?season=${SEASON}&seasontype=2`) +
       `// Season stat lines for every qualified player, so leaderboards are a build-time\n` +
@@ -559,6 +566,12 @@ async function main() {
     const { n, kb } = await mirrorLogos(teams)
     console.log(`  ${n} files, ${kb} KB → public/logos/`)
   }
+
+  console.log(
+    data.stampedAt
+      ? `  data changed; stamped src/data/meta.js ${data.stampedAt}`
+      : '  no data changed; src/data/meta.js left as is'
+  )
 
   console.log('Done.')
 }

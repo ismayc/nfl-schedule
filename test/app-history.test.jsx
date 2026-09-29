@@ -49,8 +49,8 @@ describe('App — a completed season', () => {
     await mount()
     // seasonOver short-circuits the polling effect before any fetch.
     expect(fetch).not.toHaveBeenCalled()
-    // With no successful poll there is no "Updated" timestamp.
-    expect(screen.queryByText(/Updated/)).not.toBeInTheDocument()
+    // With no successful poll there is no "Live scores checked" timestamp.
+    expect(screen.queryByText(/Live scores checked/)).not.toBeInTheDocument()
   })
 
   it('reveals past days on demand', async () => {

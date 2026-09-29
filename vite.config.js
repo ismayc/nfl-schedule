@@ -11,6 +11,7 @@ const FROZEN = new Map([
   [abs('./src/data/schedule.js'), abs('./test/fixtures/frozen/schedule.js')],
   [abs('./src/data/leaders.js'), abs('./test/fixtures/frozen/leaders.js')],
   [abs('./src/data/teams.js'), abs('./test/fixtures/frozen/teams.js')],
+  [abs('./src/data/meta.js'), abs('./test/fixtures/frozen/meta.js')],
 ])
 
 // `LIVE_DATA=1` (npm run test:data) runs only test/live/ and reads the real modules.

@@ -48,6 +48,16 @@ export function formatDate(iso, tz, opts = {}) {
   return fmt(tz, { weekday: 'short', month: 'short', day: 'numeric', ...opts }).format(new Date(iso))
 }
 
+// "Sep 28, 4:49 PM" in the viewer's zone, for the footer's "Data as of". A missing or
+// unparseable stamp gives null, never "Invalid Date" and never the epoch: `new Date(null)`
+// is a real date (December 31, 1969 in the US), which a TBC tip once printed.
+export function formatStamp(iso, tz) {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return fmt(tz, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(d)
+}
+
 export function formatZoneAbbr(iso, tz) {
   const parts = fmt(tz, { timeZoneName: 'short' }).formatToParts(new Date(iso))
   return parts.find((p) => p.type === 'timeZoneName')?.value || ''

@@ -469,7 +469,7 @@ describe('App — the live overlay', () => {
     })
 
     expect(screen.getByText(/live now/)).toBeInTheDocument()
-    expect(screen.getByText(/Updated/)).toBeInTheDocument()
+    expect(screen.getByText(/Live scores checked/)).toBeInTheDocument()
 
     const toasts = screen.getByRole('status')
     expect(within(toasts).getByText('Kickoff')).toBeInTheDocument()

@@ -20,6 +20,13 @@ name: Data freshness
 # open and skips, and either a landed Refresh commit or this job seeing a fresh fetch
 # closes it. When stale, this job exits non-zero so the scheduled run itself goes RED.
 #
+# A stale verdict has to survive several reads before it counts. GitHub's runs listing
+# is not always complete: on September 29, 2026 the same URL returned a list that stopped
+# eight days short, and the correct list under a minute later. Refresh was healthy, and
+# this job went red and filed an issue on that single read. So each read merges two
+# listings, a stale-looking read is repeated, and the newest heartbeat seen in any read
+# is the one that is judged.
+#
 # No checkout and no node actions on purpose: it reads run history from the API and uses
 # only the preinstalled gh CLI, so node-guard has nothing to flag.
 
@@ -57,6 +64,11 @@ env:
   # "Regenerate ..."), but this step's name is identical in every repo.
   REFRESH_WORKFLOW: refresh-data.yml
   FETCH_OK_STEP: 'Summarize what changed'
+  # How many times a stale-looking heartbeat is read before it is believed, and the
+  # pause between reads in seconds. A fresh first read ends the loop at once, so only a
+  # run that is about to go red pays the wait: three pauses, three minutes at most.
+  FRESH_READ_TRIES: 4
+  FRESH_READ_WAIT: 60
 
 jobs:
   check:
@@ -74,28 +86,61 @@ jobs:
           threshold="${OVERRIDE:-$FRESH_MAX_HOURS}"
           now=$(date -u +%s)
 
-          # Walk recent Refresh runs newest-first; stop at the first where the
-          # fetch-success step concluded "success". Its finish time is the heartbeat.
+          # One read of the heartbeat. Walk recent Refresh runs newest-first and stop at
+          # the first where the fetch-success step concluded "success"; its finish time
+          # is the heartbeat. The run ids come from two listings, the workflow's own and
+          # the repo-wide one, merged newest-first (run ids only grow), so a hole in one
+          # listing is covered by the other. A listing call that fails adds no ids.
+          read_heartbeat() {
+            local ids id line
+            ids=$(
+              {
+                gh api "repos/$GH_REPO/actions/workflows/$REFRESH_WORKFLOW/runs?per_page=15&status=completed" \
+                  --jq '.workflow_runs[].id' || true
+                gh api "repos/$GH_REPO/actions/runs?per_page=100&status=completed" \
+                  --jq '.workflow_runs[] | select((.path // "") | endswith("/" + env.REFRESH_WORKFLOW)) | .id' || true
+              } | sort -rn | awk '!seen[$0]++ && ++n <= 15'
+            )
+            for id in $ids; do
+              line=$(gh api "repos/$GH_REPO/actions/runs/$id/jobs" \
+                --jq '([.jobs[].steps[] | select(.name == env.FETCH_OK_STEP)][0]) // {} | "\(.conclusion // "") \(.completed_at // "")"' 2>/dev/null || echo "")
+              if [ "${line%% *}" = "success" ]; then
+                echo "${line#* }"
+                return 0
+              fi
+            done
+          }
+
+          # A listing can only UNDER-report: a run it names is real, and that run's step
+          # times are read from the run itself. So the newest heartbeat across every read
+          # is the true one, and a read that looks stale is repeated before it is believed.
           fetch_at=""
-          for id in $(gh api "repos/$GH_REPO/actions/workflows/$REFRESH_WORKFLOW/runs?per_page=15&status=completed" --jq '.workflow_runs[].id'); do
-            line=$(gh api "repos/$GH_REPO/actions/runs/$id/jobs" \
-              --jq '([.jobs[].steps[] | select(.name == env.FETCH_OK_STEP)][0]) // {} | "\(.conclusion // "") \(.completed_at // "")"' 2>/dev/null || echo "")
-            concl=${line%% *}
-            when=${line#* }
-            if [ "$concl" = "success" ]; then
-              fetch_at="$when"
+          age_h=99999
+          for attempt in $(seq 1 "$FRESH_READ_TRIES"); do
+            got=$(read_heartbeat)
+            if [ -n "$got" ] && [[ "$got" > "$fetch_at" ]]; then
+              fetch_at="$got"
+              age_h=$(( ( now - $(date -u -d "$fetch_at" +%s) ) / 3600 ))
+            fi
+            if [ "$age_h" -le "$threshold" ]; then
               break
+            fi
+            if [ "$attempt" -lt "$FRESH_READ_TRIES" ]; then
+              echo "::warning::read $attempt of $FRESH_READ_TRIES looks stale (newest heartbeat so far: ${fetch_at:-none}); reading again in ${FRESH_READ_WAIT}s"
+              sleep "$FRESH_READ_WAIT"
             fi
           done
 
           if [ -z "$fetch_at" ]; then
-            age_h=99999
-            detail="no successful fetch found in the last 15 Refresh runs"
+            detail="no successful fetch found in the recent Refresh runs"
           else
-            age_h=$(( ( now - $(date -u -d "$fetch_at" +%s) ) / 3600 ))
             detail="last successful fetch $fetch_at (${age_h}h ago)"
           fi
-          echo "$detail. Threshold: ${threshold}h." | tee -a "$GITHUB_STEP_SUMMARY"
+          reads=""
+          if [ "$attempt" -gt 1 ]; then
+            reads=" Took $attempt reads of the run history."
+          fi
+          echo "$detail. Threshold: ${threshold}h.$reads" | tee -a "$GITHUB_STEP_SUMMARY"
 
           open=$(gh issue list --state open --search "\"$STALE_ISSUE\"" --json number --jq '.[0].number // empty')
 

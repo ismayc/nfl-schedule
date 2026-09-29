@@ -79,6 +79,37 @@ describe('the new-season watch', () => {
   })
 })
 
+describe('the data-freshness monitor', () => {
+  // The monitor finds the last successful fetch by listing recent Refresh runs, and
+  // GitHub's listing is not always complete. On September 29, 2026 the NBA monitor
+  // read a list that stopped eight days short, reported a 207 hour old fetch, went
+  // red, and filed an issue, while Refresh was healthy and the same URL returned the
+  // correct list under a minute later. A listing can only under-report, so the newest
+  // heartbeat across several reads is the true one. The shape of the mistake: a
+  // cleanup trims the monitor back to one read of one listing, and one bad answer
+  // from GitHub reddens the run and files a false issue.
+  const src = read('.github/workflows/data-freshness.yml')
+
+  it('reads a stale-looking run history again before it goes red', () => {
+    const tries = src.match(/^ {2}FRESH_READ_TRIES: (\d+)$/m)
+    expect(tries, 'no FRESH_READ_TRIES setting').not.toBeNull()
+    expect(Number(tries[1])).toBeGreaterThanOrEqual(3)
+    expect(src).toMatch(/^ {2}FRESH_READ_WAIT: \d+$/m)
+    expect(src).toContain('for attempt in $(seq 1 "$FRESH_READ_TRIES"); do')
+    expect(src).toContain('sleep "$FRESH_READ_WAIT"')
+  })
+
+  it('judges the newest heartbeat seen in any read', () => {
+    expect(src).toContain('[[ "$got" > "$fetch_at" ]]')
+  })
+
+  it('merges the workflow listing with the repo-wide listing', () => {
+    expect(src).toContain('actions/workflows/$REFRESH_WORKFLOW/runs?per_page=15&status=completed')
+    expect(src).toContain('actions/runs?per_page=100&status=completed')
+    expect(src).toContain('endswith("/" + env.REFRESH_WORKFLOW)')
+  })
+})
+
 describe('the storage namespace', () => {
   // The hub and all the sibling viewers are served from one origin
   // (ismayc.github.io), so localStorage is shared. A key prefix borrowed from a

@@ -4,6 +4,22 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-29
+
+- **The data-freshness monitor no longer goes red on one bad read of the run history.**
+  The NBA sibling's monitor failed at 13:18 UTC today and filed an issue reporting a
+  207 hour old fetch, while its Refresh was healthy. GitHub's runs listing had returned
+  an incomplete list, one that stopped eight days short and skipped weeks before that,
+  and the same URL returned the correct list under a minute later. This monitor is the
+  identical file, so it gets the same change. It now merges two listings on every read
+  (the workflow's own and the repo-wide one), repeats a stale-looking read up to 4
+  times a minute apart, and judges the newest heartbeat seen in any read. A healthy run
+  still makes one read and does not wait. A truly stale pipeline still goes red and
+  files the issue, about three minutes later than before. `test/guards.test.js` pins
+  the repeat, the newest-heartbeat rule, and the two listings. Proven on the NBA repo
+  first, on real CI: a normal run stayed green on one read, and a run forced stale
+  with a zero threshold went red after 4 reads and filed the issue.
+
 ## 2026-09-26
 
 - **The new-season watch rides out ESPN 502 bursts.** The WNBA sibling's daily run

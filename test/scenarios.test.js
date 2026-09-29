@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   OUT,
   OUTCOMES,
@@ -18,6 +18,19 @@ import {
   conferenceOf,
 } from '../src/utils/scenarios.js'
 import { computeStandings, conferenceSeeds, countsForStandings } from '../src/utils/standings.js'
+
+// The engine stops at a 200 ms wall-clock budget (BUDGET_MS) rather than freeze the
+// page. Read on the real clock, that makes every test that expects a grid depend on how
+// busy the machine is: on September 29, 2026 CI's clock rehearsal (a slower coverage run)
+// and a loaded laptop both tripped it, and the grid tests found the "stopped rather than
+// freeze" note instead. So the clock the budget reads is frozen by default here; the
+// tests of the budget itself pass their own advancing clock.
+beforeEach(() => {
+  vi.spyOn(performance, 'now').mockReturnValue(0)
+})
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 import { GAMES_2025 } from './fixtures/season-2025.js'
 import { GAMES as FROZEN } from './fixtures/frozen/schedule.js'
 

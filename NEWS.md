@@ -6,6 +6,13 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-09-29
 
+- **The Scenarios tests no longer depend on how busy the machine is.** The engine stops
+  at a 200 ms wall-clock budget rather than freeze the page, and the tests read that
+  budget on the real clock, so a slow coverage run failed them: CI's clock rehearsal went
+  red at three dates on the push that added the tab, and a loaded laptop failed them at
+  any date. The clock the budget reads is now frozen in both test files; the two tests
+  of the budget itself still pass their own advancing clock, and both fail if the budget
+  check is removed.
 - **A Scenarios tab: every way the playoff seeds can still land.** Ported from the WNBA
   viewer's tab (September 23), with its follow-up fixes built in: rows that add up to
   exactly 100%, the playoff line, check and X marks, the exact combinations of results

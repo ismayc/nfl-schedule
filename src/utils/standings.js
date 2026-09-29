@@ -612,20 +612,33 @@ function seriesLedger(games) {
 // who can only TIE the team's floor (never strictly pass it) stops counting once the
 // pair's season series is complete and strictly won — head-to-head is step 1 of the
 // two-club chain in BOTH the division and wild-card procedures, so a banked series
-// settles a two-club tie immutably. (A multi-way tie could still reorder through the
-// one-club-per-division and sweep steps — the exotic case this refinement accepts.)
+// settles a two-club tie immutably. It applies only while the tie can be a TWO-club
+// tie: when a third club in the pool could also land on the team's floor, the
+// multi-club procedures decide (one club per division, the head-to-head sweep, the
+// whole group's division record), and a series the team won proves nothing there.
+// (This case used to be accepted as exotic; random late-season boards showed a false
+// ✓ on about one board in thirty, e.g. TB 9-8 with a banked win over ARI, sunk to 8th
+// when MIN fell to 9-8 as well. Same fix as the WNBA sibling's 6c9d3ab.)
 function banked(ledger, mine, theirs) {
   const e = ledger.get([mine, theirs].sort().join('|'))
   return !!e && e.remaining === 0 && (e.hp[mine] ?? 0) > (e.hp[theirs] ?? 0)
 }
 
 // Could rival `r` still finish at-or-above `b` on record? Strict pass, or a tie the
-// team has not banked.
+// team has not banked. `bounds` is the pool the tie would be broken in (a division,
+// or the conference), and a tie is only ever at b's floor: r cannot exceed it, so
+// the tie needs b to lose out. A third pool club whose range covers that floor
+// could join it, which voids the discount.
 function couldPassOrTie(r, b, bounds, ledger) {
   const rb = bounds.get(r.abbr)
   const bb = bounds.get(b.abbr)
   if (rb.ceiling > bb.floor) return true
-  return rb.ceiling === bb.floor && !banked(ledger, b.abbr, r.abbr)
+  if (rb.ceiling < bb.floor) return false
+  if (!banked(ledger, b.abbr, r.abbr)) return true
+  for (const [abbr, t] of bounds) {
+    if (abbr !== b.abbr && abbr !== r.abbr && t.floor <= bb.floor && t.ceiling >= bb.floor) return true
+  }
+  return false
 }
 
 // The window of final DIVISION ranks (1–4) still arithmetically open to each club.

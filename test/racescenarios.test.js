@@ -146,6 +146,23 @@ describe('scenarioClinched — floor ties and the head-to-head ledger', () => {
     expect(scenarioClinched('AAA', rows, totals, games, 4)).toBe(true)
   })
 
+  it('a banked lone tie is no clinch when a chaser above could drop onto the floor', () => {
+    // B can only tie the floor and the team beat it twice. C (10-0, one game left
+    // against a club outside the pool) wins out to pass the team, which leaves one
+    // rival ahead and a lone banked tie: fewer than 2. But if C LOSES, it lands on
+    // the floor too, and the three-club tie charges both B and C.
+    const rows = [row('AAA', 10, 0, 13), row('BBB', 9, 0, 13), row('CCC', 10, 0, 13)]
+    const beatB = [
+      game({ home: 'AAA', away: 'BBB', score: [24, 20] }),
+      game({ home: 'BBB', away: 'AAA', score: [10, 17] }),
+      game({ home: 'BBB', away: 'ZZZ' }),
+    ]
+    expect(scenarioClinched('AAA', rows, totals, [...beatB, game({ home: 'CCC', away: 'ZZZ' })], 2)).toBe(false)
+    // C's last game is against the TEAM instead: the team losing out means C wins it
+    // and stays above, so the tie with B stays two-club and banked.
+    expect(scenarioClinched('AAA', rows, totals, [...beatB, game({ home: 'CCC', away: 'AAA' })], 2)).toBe(true)
+  })
+
   it('ignores rivals who cannot reach the floor even winning out', () => {
     const rows = [row('AAA', 10, 0, 13), row('BBB', 2, 0, 13)]
     expect(scenarioClinched('AAA', rows, totals, [game({ home: 'BBB', away: 'ZZZ' })], 1)).toBe(

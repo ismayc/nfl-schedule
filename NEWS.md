@@ -6,6 +6,20 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-09-29
 
+- **No more false playoff checks when three or more teams can finish tied.** The
+  Standings tab could mark a team ✓ clinched when it could still finish 8th. A won
+  season series with the one rival that could only tie was treated as a settled
+  tiebreaker, but when a third club can land on the same record, the multi-club
+  procedures decide (one club per division, the head-to-head sweep, then conference
+  record), and that series proves nothing. Example: TB 9-8 beat ARI 9-8, but if MIN also
+  fell to 9-8, conference record put TB 8th. The late-season scenario check had a
+  second form of the same flaw: it assumed every chaser wins out, when a chaser dropping
+  onto the team's record can hurt more. Both now count the rival whenever a third club
+  can join the tie; the division race and the Finish column use the same rule. On 8,000
+  random late-season boards checked against exact enumeration, false checks went from 269
+  boards (about one in thirty) to none. The cost: about 1 true clinch in 36 now waits for
+  the next result before showing ✓. Eliminations (✕) did not change.
+
 - **The Scenarios tests no longer depend on how busy the machine is.** The engine stops
   at a 200 ms wall-clock budget rather than freeze the page, and the tests read that
   budget on the real clock, so a slow coverage run failed them: CI's clock rehearsal went

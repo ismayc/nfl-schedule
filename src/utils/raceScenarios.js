@@ -16,7 +16,8 @@
 //   miss and wrongly call a clinch.
 // - A ONE-rival tie at the team's floor is resolved by head-to-head, fully known
 //   inside a scenario — it is step 1 of the two-club chain in BOTH the division and
-//   wild-card procedures. A tie of TWO OR MORE rivals forms a 3+-club group, and
+//   wild-card procedures, but only when no other chaser could join it (see `free`
+//   below). A tie of TWO OR MORE rivals forms a 3+-club group, and
 //   the NFL's multi-club procedures open with the one-club-per-division elimination
 //   and the head-to-head sweep — both depending on games outside the enumeration —
 //   so every rival in such a group is charged AGAINST the team. Conservative,
@@ -81,17 +82,24 @@ export function scenarioClinched(teamAbbr, rows, totals, games, cut, opts = {}) 
   const coupled = remaining.filter((g) => chasers.has(g.home) && chasers.has(g.away))
   if (coupled.length > maxCoupled) return null
 
-  // Adversary-optimal base: every chaser wins all of its uncoupled games — a win
-  // (2) always beats a tie (1), so the adversary never wants a tie here.
+  // Base: every chaser wins all of its uncoupled games. That is each chaser's HIGHEST
+  // finish, but not always the adversary's best: a chaser that could pass the team
+  // may do more harm by landing ON the floor, turning a lone tied rival the team has
+  // beaten into a three-club tie that head-to-head no longer settles. So `free`
+  // keeps how far each chaser can still drop: its uncoupled games against anyone but
+  // the team (games against the team stay losses for the team, as above), each worth
+  // 0, 1 or 2 half-points, so every total down to pts - 2·free is reachable.
   const pts = new Map()
+  const free = new Map()
   for (const abbr of chasers) {
     const r = rows.find((x) => x.abbr === abbr)
     const uncoupled = remaining.filter(
       (g) =>
         (g.home === abbr || g.away === abbr) &&
         !(chasers.has(g.home) && chasers.has(g.away))
-    ).length
-    pts.set(abbr, hpOf(r) + 2 * uncoupled)
+    )
+    pts.set(abbr, hpOf(r) + 2 * uncoupled.length)
+    free.set(abbr, uncoupled.filter((g) => g.home !== teamAbbr && g.away !== teamAbbr).length)
   }
 
   // Pairwise series ledger between the team and each chaser, for the two-club
@@ -124,21 +132,26 @@ export function scenarioClinched(teamAbbr, rows, totals, games, cut, opts = {}) 
 
   const caughtAtLeaf = () => {
     let ahead = ahead0
+    let canDrop = false // some chaser above the floor could land on it instead
     const tied = []
     for (const abbr of chasers) {
       const hp = pts.get(abbr)
-      if (hp > floor) ahead++
-      else if (hp === floor) tied.push(abbr)
+      if (hp > floor) {
+        ahead++
+        if (hp - 2 * free.get(abbr) <= floor) canDrop = true
+      } else if (hp === floor) tied.push(abbr)
     }
     if (ahead >= cut) return true
     if (!tied.length || ahead + tied.length < cut) return false
     if (tied.length === 1) {
       // Two-club tie: step 1 is head-to-head in both official chains, and the
       // pair's whole series is known here. The rival counts ahead unless the team
-      // strictly won it (a tied meeting decides nothing).
+      // strictly won it (a tied meeting decides nothing). A won series only helps
+      // while the tie stays two-club: if a chaser above can drop onto the floor, the
+      // adversary trades that pass for a charged three-club tie, one more rival.
       const e = pairVs.get(tied[0])
       const safe = e && e.team > e.rival
-      return ahead + (safe ? 0 : 1) >= cut
+      return ahead + (safe && !canDrop ? 0 : 1) >= cut
     }
     // Three-plus-club tie: the multi-club procedures open with one-club-per-division
     // and the head-to-head sweep, which the enumeration cannot see — charge every

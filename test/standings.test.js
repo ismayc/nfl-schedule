@@ -1085,11 +1085,13 @@ describe('divisionRanges', () => {
     expect(ranges.NYJ).toEqual({ bestRank: 4, worstRank: 4 })
   })
 
-  it('keeps the three-way NFC South tie honest: ranks 1-3 stay open, banked series narrow', () => {
+  it('keeps the three-way NFC South tie honest: ranks 1-3 stay open for all three', () => {
     // CAR, TB and ATL all finished 8-9 — the title belongs to the tiebreakers, so
     // none of the three is "clinched" or "denied" arithmetically. CAR strictly won
-    // one season series (banked head-to-head), which trims its worst case to 2.
-    expect(ranges.CAR).toEqual({ bestRank: 1, worstRank: 2 })
+    // one season series, but with THREE clubs on 8-9 the group's head-to-head
+    // decides, not that pair's, so the banked series trims nothing (it used to trim
+    // CAR's worst case to 2, the unsound multi-club discount).
+    expect(ranges.CAR).toEqual({ bestRank: 1, worstRank: 3 })
     expect(ranges.TB).toEqual({ bestRank: 1, worstRank: 3 })
     expect(ranges.ATL).toEqual({ bestRank: 1, worstRank: 3 })
     expect(ranges.NO).toEqual({ bestRank: 4, worstRank: 4 })
@@ -1236,6 +1238,73 @@ describe('playoffPicture — wild-card clinch paths', () => {
     const buf = playoffPicture(games).AFC.find((r) => r.abbr === 'BUF')
     expect(buf.clinched).toBe(false)
     expect(buf.eliminated).toBe(false)
+  })
+
+  // Reduced from a random late-season board where the Standings tab showed TB ✓ at
+  // 9-8 and exact enumeration put it 8th: a banked series over the one tie-only
+  // rival is no protection once a third club can fall onto the same record.
+  describe('a banked series does not settle a tie a third club can join', () => {
+    const AFC_OPPS = ['BUF', 'MIA', 'NE', 'NYJ', 'BAL', 'CIN', 'CLE', 'PIT']
+    const vsAfc = (abbr, w, l, games) => {
+      let i = 0
+      for (let k = 0; k < w; k++) games.push(sg(abbr, AFC_OPPS[i++ % 8], 24, 10))
+      for (let k = 0; k < l; k++) games.push(sg(abbr, AFC_OPPS[i++ % 8], 10, 24))
+    }
+    // Six-game NFC slates. NO, SF, PHI and CHI are 6-0 leaders; WSH 5-1 is a
+    // non-winner always above TB. TB (4-2, done) beat ARI (4-2, done) in their only
+    // meeting, so ARI can only tie TB and the series is banked. MIN (4-0) still
+    // plays GB and DET: win either and it passes TB, lose both and it is 4-2 too.
+    const board = () => {
+      const games = []
+      vsAfc('NO', 5, 0, games)
+      vsAfc('SF', 5, 0, games)
+      vsAfc('PHI', 6, 0, games)
+      vsAfc('CHI', 6, 0, games)
+      vsAfc('WSH', 5, 1, games)
+      games.push(sg('NO', 'TB', 24, 10), sg('SF', 'TB', 24, 10), sg('TB', 'ARI', 24, 10))
+      vsAfc('TB', 3, 0, games)
+      games.push(sg('ARI', 'LAR', 24, 10), sg('ARI', 'SEA', 24, 10))
+      vsAfc('ARI', 2, 1, games)
+      games.push(sg('MIN', 'GB', 24, 10), sg('MIN', 'DET', 24, 10))
+      vsAfc('MIN', 2, 0, games)
+      return games
+    }
+    const open = () => [
+      ...board(),
+      { id: 'syn-min-gb', seasonType: 'regular', tip: '2026-12-27T18:00:00.000Z', home: 'GB', away: 'MIN' },
+      { id: 'syn-min-det', seasonType: 'regular', tip: '2026-12-27T18:00:00.000Z', home: 'DET', away: 'MIN' },
+    ]
+
+    it('the miss is real: MIN losing out leaves TB 8th in a three-club tie at 4-2', () => {
+      const final = [...board(), sg('GB', 'MIN', 24, 10), sg('DET', 'MIN', 24, 10)]
+      const nfc = conferenceSeeds(final).NFC
+      const at = (abbr) => nfc.find((r) => r.abbr === abbr)
+      // No sweep (MIN met neither), so conference record decides: ARI 2-1, MIN 2-2,
+      // TB 1-2. TB's win over ARI never gets a say.
+      expect(['TB', 'ARI', 'MIN'].map((a) => `${at(a).w}-${at(a).l}`)).toEqual(['4-2', '4-2', '4-2'])
+      expect(at('TB').seed).toBe(8)
+      expect(at('TB').inField).toBe(false)
+    })
+
+    it('so TB is not clinched: ARI stays a threat and the worst seed is 8', () => {
+      const games = open()
+      expect(seedRanges(games).TB.worstRank).toBe(8)
+      const tb = playoffPicture(games).NFC.find((r) => r.abbr === 'TB')
+      expect(tb.clinched).toBe(false)
+      expect(tb.eliminated).toBe(false)
+    })
+
+    it('the discount still applies once no third club can reach the record', () => {
+      // MIN already beat GB: it can no longer fall to 4-2, so a TB-ARI tie can only
+      // be a two-club tie, which head-to-head settles for TB.
+      const games = [
+        ...board(),
+        sg('GB', 'MIN', 10, 24),
+        { id: 'syn-min-det', seasonType: 'regular', tip: '2026-12-27T18:00:00.000Z', home: 'DET', away: 'MIN' },
+      ]
+      expect(seedRanges(games).TB.worstRank).toBe(7)
+      expect(playoffPicture(games).NFC.find((r) => r.abbr === 'TB').clinched).toBe(true)
+    })
   })
 
   it('keeps the whole preseason wide open: every seed 1-16, nothing flagged', () => {

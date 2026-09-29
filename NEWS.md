@@ -6,6 +6,14 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-09-29
 
+- **The data-freshness monitor now says "unknown" when it cannot read the run history.**
+  Before, a GitHub API outage that failed every listing call looked the same as a dead
+  pipeline: the run went red and filed "Refresh has not landed for days", a claim
+  nothing supported. Now, when every listing call fails in all 4 reads, the run still
+  goes red, so a monitor that has lost its access cannot go quiet for good, but with
+  its own message, and it files and closes no issue. A history that reads fine and
+  holds no successful fetch is still stale and still files the issue.
+  `test/guards.test.js` pins the order: the unknown exit comes before the issue is filed.
 - **The data-freshness monitor no longer goes red on one bad read of the run history.**
   The NBA sibling's monitor failed at 13:18 UTC today and filed an issue reporting a
   207 hour old fetch, while its Refresh was healthy. GitHub's runs listing had returned

@@ -108,6 +108,15 @@ describe('the data-freshness monitor', () => {
     expect(src).toContain('actions/runs?per_page=100&status=completed')
     expect(src).toContain('endswith("/" + env.REFRESH_WORKFLOW)')
   })
+  it('reports an unreadable run history as unknown, never as stale', () => {
+    // On September 29, 2026 the stub run with every listing call failing went red AND
+    // filed the stale-data issue, which claims Refresh stopped fetching. Nothing was
+    // known. An unreadable history must exit before the issue is filed.
+    expect(src).toContain('echo "unreadable"')
+    const unknown = src.indexOf('freshness is unknown')
+    expect(unknown).toBeGreaterThan(-1)
+    expect(unknown).toBeLessThan(src.indexOf('gh issue create'))
+  })
 })
 
 describe('the storage namespace', () => {

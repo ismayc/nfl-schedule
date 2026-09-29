@@ -27,6 +27,12 @@ name: Data freshness
 # listings, a stale-looking read is repeated, and the newest heartbeat seen in any read
 # is the one that is judged.
 #
+# "Could not read" is its own verdict, not a stale one. When every listing call fails in
+# every read, nothing is known about the pipeline, so the run goes red with its own
+# message and files no stale-data issue: that issue says Refresh stopped fetching, which
+# would be a guess. Red rather than green, so a monitor that has lost its access (a token
+# permission change, say) cannot go silent for good.
+#
 # No checkout and no node actions on purpose: it reads run history from the API and uses
 # only the preinstalled gh CLI, so node-guard has nothing to flag.
 
@@ -91,24 +97,32 @@ jobs:
           # is the heartbeat. The run ids come from two listings, the workflow's own and
           # the repo-wide one, merged newest-first (run ids only grow), so a hole in one
           # listing is covered by the other. A listing call that fails adds no ids.
+          #
+          # Prints one line: "unreadable" when BOTH listing calls failed, else "ok" followed
+          # by the heartbeat if one was found ("ok" alone means the history was read and
+          # holds no successful fetch, which is a real stale signal).
           read_heartbeat() {
-            local ids id line
-            ids=$(
-              {
-                gh api "repos/$GH_REPO/actions/workflows/$REFRESH_WORKFLOW/runs?per_page=15&status=completed" \
-                  --jq '.workflow_runs[].id' || true
-                gh api "repos/$GH_REPO/actions/runs?per_page=100&status=completed" \
-                  --jq '.workflow_runs[] | select((.path // "") | endswith("/" + env.REFRESH_WORKFLOW)) | .id' || true
-              } | sort -rn | awk '!seen[$0]++ && ++n <= 15'
-            )
+            local wf rw ok=0 ids id line
+            if wf=$(gh api "repos/$GH_REPO/actions/workflows/$REFRESH_WORKFLOW/runs?per_page=15&status=completed" \
+                --jq '.workflow_runs[].id'); then ok=1; else wf=""; fi
+            if rw=$(gh api "repos/$GH_REPO/actions/runs?per_page=100&status=completed" \
+                --jq '.workflow_runs[] | select((.path // "") | endswith("/" + env.REFRESH_WORKFLOW)) | .id'); then ok=1; else rw=""; fi
+            if [ "$ok" = 0 ]; then
+              echo "unreadable"
+              return 0
+            fi
+            # awk, not grep, for the digits filter: grep exits 1 on no match, and under
+            # pipefail that would end the step on an empty but successful listing.
+            ids=$(printf '%s\n%s\n' "$wf" "$rw" | sort -rn | awk '/^[0-9]+$/ && !seen[$0]++ && ++n <= 15')
             for id in $ids; do
               line=$(gh api "repos/$GH_REPO/actions/runs/$id/jobs" \
                 --jq '([.jobs[].steps[] | select(.name == env.FETCH_OK_STEP)][0]) // {} | "\(.conclusion // "") \(.completed_at // "")"' 2>/dev/null || echo "")
               if [ "${line%% *}" = "success" ]; then
-                echo "${line#* }"
+                echo "ok ${line#* }"
                 return 0
               fi
             done
+            echo "ok"
           }
 
           # A listing can only UNDER-report: a run it names is real, and that run's step
@@ -116,11 +130,17 @@ jobs:
           # is the true one, and a read that looks stale is repeated before it is believed.
           fetch_at=""
           age_h=99999
+          readable=0
           for attempt in $(seq 1 "$FRESH_READ_TRIES"); do
             got=$(read_heartbeat)
-            if [ -n "$got" ] && [[ "$got" > "$fetch_at" ]]; then
-              fetch_at="$got"
-              age_h=$(( ( now - $(date -u -d "$fetch_at" +%s) ) / 3600 ))
+            if [ "$got" != "unreadable" ]; then
+              readable=1
+              got=${got#ok}
+              got=${got# }
+              if [ -n "$got" ] && [[ "$got" > "$fetch_at" ]]; then
+                fetch_at="$got"
+                age_h=$(( ( now - $(date -u -d "$fetch_at" +%s) ) / 3600 ))
+              fi
             fi
             if [ "$age_h" -le "$threshold" ]; then
               break
@@ -130,6 +150,12 @@ jobs:
               sleep "$FRESH_READ_WAIT"
             fi
           done
+
+          if [ "$readable" = 0 ]; then
+            echo "::error::could not read the Refresh run history in $attempt reads (every listing call failed), so freshness is unknown. No stale-data issue was filed or closed."
+            echo "Could not read the Refresh run history in $attempt reads; freshness is unknown. No issue filed or closed." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
           if [ -z "$fetch_at" ]; then
             detail="no successful fetch found in the recent Refresh runs"

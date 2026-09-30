@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { postseasonFromScoreboard } from '../scripts/fetch-schedule.mjs'
+import { postseasonFromScoreboard, gamesFromTeamFeed } from '../scripts/fetch-schedule.mjs'
 
 // The team-schedule feed lags the bracket by days, so postseason games come from the
 // scoreboard too. Shapes below are trimmed from the real 2026-01-10 (wild card) and
@@ -55,5 +55,39 @@ describe('postseasonFromScoreboard', () => {
     expect(
       postseasonFromScoreboard([tbd, proBowl, regular, superBowl], KNOWN).map((g) => [g.id, g.round])
     ).toEqual([['sb', 'SB']])
+  })
+})
+
+// The per-team feed lists an advancing team's next-round game with a "TBD" opponent
+// (id -1 or -2). The WNBA viewer shipped such a slot on 2026-09-30 and its live suite
+// failed, so the team-feed path applies the same real-side rule as the scoreboard path.
+describe('gamesFromTeamFeed', () => {
+  const teamEvent = (id, home, away, over = {}) => ({
+    id,
+    date: '2026-09-13T17:00Z',
+    seasonType: { id: '2' },
+    week: { number: 2 },
+    competitions: [{ status: { type: { name: 'STATUS_SCHEDULED' } }, competitors: [home, away] }],
+    ...over,
+  })
+
+  it('drops a TBD slot, keeps a real game, and dedupes a game seen in both feeds', () => {
+    const real = teamEvent('g1', team('29', 'CAR', 'home'), team('14', 'LAR', 'away'))
+    const slot = teamEvent('slot', team('17', 'NE', 'home'), team('-2', 'TBD', 'away'))
+    expect(gamesFromTeamFeed([real, slot, real, slot], KNOWN).map((g) => [g.id, g.home, g.away])).toEqual([
+      ['g1', 'CAR', 'LAR'],
+    ])
+  })
+
+  it('drops an event with positive ids but an unknown abbreviation', () => {
+    const odd = teamEvent('odd', team('31', 'AFC', 'home'), team('32', 'NFC', 'away'))
+    expect(gamesFromTeamFeed([odd], KNOWN)).toEqual([])
+  })
+
+  it('sorts by kickoff, then id', () => {
+    const late = teamEvent('b', team('29', 'CAR', 'home'), team('14', 'LAR', 'away'), { date: '2026-09-20T17:00Z' })
+    const early2 = teamEvent('z', team('17', 'NE', 'home'), team('26', 'SEA', 'away'))
+    const early1 = teamEvent('a', team('29', 'CAR', 'home'), team('26', 'SEA', 'away'))
+    expect(gamesFromTeamFeed([late, early2, early1], KNOWN).map((g) => g.id)).toEqual(['a', 'z', 'b'])
   })
 })

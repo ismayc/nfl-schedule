@@ -51,6 +51,7 @@ async function fetchLive() {
         const home = c.competitors.find((t) => t.homeAway === 'home')
         const away = c.competitors.find((t) => t.homeAway === 'away')
         if (!home || !away) continue
+        if (!(Number(home.team.id) > 0 && Number(away.team.id) > 0)) continue // "TBD" slot (id -1 or -2)
         const st = c.status?.type || {}
         const num = (v) => Number(v?.value ?? v)
         byId.set(ev.id, {

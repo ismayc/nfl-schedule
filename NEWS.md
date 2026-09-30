@@ -4,6 +4,18 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-09-30
+
+- **The schedule refresh no longer lets "TBD" playoff slots into the games list.** ESPN
+  lists an advancing team's next-round game in its per-team feed with the opponent
+  "TBD" (team id -1 or -2) before the bracket is set. The WNBA viewer hit this on
+  September 30: the refresh wrote such a game into the data, and the live suite's check
+  that every game has two real, different teams failed. The NFL refresh now applies the
+  same rule the scoreboard path already used, keeping a game only when both sides have a
+  positive team id and are known franchises, and the drift check skips the slots too.
+  No NFL data changed, because no team feed carries one today (checked for 2025 and
+  2026).
+
 ## 2026-09-29
 
 - **No more false playoff checks when three or more teams can finish tied.** The

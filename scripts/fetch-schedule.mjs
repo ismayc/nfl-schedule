@@ -119,8 +119,24 @@ function normalizeEvent(ev, forcedType) {
   }
 }
 
-export async function fetchSchedule(teams, season = SEASON) {
+// A side is real when ESPN gives it a positive team id AND it is one of our franchises.
+// An advancing team's next-round game is listed with a "TBD" opponent (id -1 or -2), and
+// the Pro Bowl's AFC and NFC sides are not franchises.
+const isRealSide = (t, knownAbbrs) => Number(t.team?.id) > 0 && knownAbbrs.has(t.team?.abbreviation)
+
+// Per-team feed events to games: only events whose sides are all real, deduped by id
+// (each game appears in both teams' feeds), sorted by kickoff then id. Pure, for tests.
+export function gamesFromTeamFeed(events, knownAbbrs) {
   const byId = new Map()
+  for (const ev of events) {
+    if (!(ev.competitions?.[0]?.competitors || []).every((t) => isRealSide(t, knownAbbrs))) continue
+    const game = normalizeEvent(ev)
+    if (game) byId.set(game.id, game)
+  }
+  return [...byId.values()].sort((a, b) => a.tip.localeCompare(b.tip) || a.id.localeCompare(b.id))
+}
+
+export async function fetchSchedule(teams, season = SEASON) {
   const results = await Promise.all(
     teams.map(async (t) => {
       const evs = []
@@ -131,11 +147,7 @@ export async function fetchSchedule(teams, season = SEASON) {
       return evs
     })
   )
-  for (const ev of results.flat()) {
-    const game = normalizeEvent(ev)
-    if (game) byId.set(game.id, game)
-  }
-  return [...byId.values()].sort((a, b) => a.tip.localeCompare(b.tip) || a.id.localeCompare(b.id))
+  return gamesFromTeamFeed(results.flat(), new Set(teams.map((t) => t.abbr)))
 }
 
 // Postseason games from the scoreboard. The per-team schedule feed lags the bracket by
@@ -150,10 +162,9 @@ export async function fetchSchedule(teams, season = SEASON) {
 const POSTSEASON_DAYS = 49
 
 export function postseasonFromScoreboard(events, knownAbbrs) {
-  const real = (t) => Number(t.team?.id) > 0 && knownAbbrs.has(t.team?.abbreviation)
   return events
     .filter((ev) => Number(ev.season?.type) === 3)
-    .filter((ev) => (ev.competitions?.[0]?.competitors || []).every(real))
+    .filter((ev) => (ev.competitions?.[0]?.competitors || []).every((t) => isRealSide(t, knownAbbrs)))
     .map((ev) => normalizeEvent(ev, 'postseason'))
     .filter(Boolean)
 }

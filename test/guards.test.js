@@ -119,6 +119,23 @@ describe('the data-freshness monitor', () => {
     expect(unknown).toBeGreaterThan(-1)
     expect(unknown).toBeLessThan(src.indexOf('gh issue create'))
   })
+
+  it('never lets a failed issue call redden a fresh run', () => {
+    // On October 3, 2026 the data was 0h old, the open-issue lookup got a GitHub 504,
+    // and under `set -e` the bare `open=$(gh issue list ...)` ended the step red. The
+    // shape of the mistake: an issue call run bare, where its exit status ends the step.
+    expect(src).toContain('if open=$(gh issue list')
+    expect(src).not.toMatch(/^ *open=\$\(gh issue list/m)
+    expect(src).toContain('if gh issue close')
+    expect(src).not.toMatch(/^ *gh issue close/m)
+  })
+
+  it('files no stale-data issue when the lookup failed', () => {
+    // Filing without knowing whether one is open could duplicate it.
+    const guard = src.indexOf('if [ "$looked_up" = 0 ]; then', src.indexOf('# Stale.'))
+    expect(guard).toBeGreaterThan(-1)
+    expect(guard).toBeLessThan(src.indexOf('gh issue create'))
+  })
 })
 
 describe('the storage namespace', () => {

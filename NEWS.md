@@ -4,6 +4,17 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-10-03
+
+- **A failed issue call no longer turns a fresh data-freshness run red.** At 21:47 UTC
+  today the Premier League sibling's monitor found a fetch 0h old, then its lookup of the stale-data issue got a
+  GitHub 504, and the bare `gh issue list` call ended the step red. The lookup now gets
+  3 tries. On a fresh run, a lookup or close that still fails leaves a warning and the
+  run stays green; the next run closes any leftover issue. On a stale run, the run stays
+  red but files nothing when the lookup failed, since filing blind could duplicate an
+  open issue. `test/guards.test.js` pins both: no issue call runs bare, and the
+  lookup-failed exit comes before the issue is filed.
+
 ## 2026-09-30
 
 - **The schedule refresh no longer lets "TBD" playoff slots into the games list.** ESPN

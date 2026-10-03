@@ -33,6 +33,10 @@ name: Data freshness
 # would be a guess. Red rather than green, so a monitor that has lost its access (a token
 # permission change, say) cannot go silent for good.
 #
+# The issue calls never decide the verdict. A fresh run stays green when looking up or
+# closing the stale-data issue fails (the next run closes it), and a stale run stays red
+# but files nothing when the lookup fails, since filing blind could duplicate an open one.
+#
 # No checkout and no node actions on purpose: it reads run history from the API and uses
 # only the preinstalled gh CLI, so node-guard has nothing to flag.
 
@@ -168,12 +172,35 @@ jobs:
           fi
           echo "$detail. Threshold: ${threshold}h.$reads" | tee -a "$GITHUB_STEP_SUMMARY"
 
-          open=$(gh issue list --state open --search "\"$STALE_ISSUE\"" --json number --jq '.[0].number // empty')
+          # The open-issue lookup is retried, and a lookup that never answers is a known
+          # state. On October 3, 2026 the data was 0h old and this call got a GitHub 504;
+          # under `set -e` that ended the step and reddened a fresh run.
+          open=""
+          looked_up=0
+          for try in 1 2 3; do
+            if open=$(gh issue list --state open --search "\"$STALE_ISSUE\"" --json number --jq '.[0].number // empty'); then
+              looked_up=1
+              break
+            fi
+            open=""
+            if [ "$try" -lt 3 ]; then
+              sleep 20
+            fi
+          done
 
           if [ "$age_h" -le "$threshold" ]; then
-            if [ -n "$open" ]; then
-              gh issue close "$open" --comment "The pipeline is alive again: $detail (run ${RUN_URL})."
-              echo "Fresh; closed #$open." >> "$GITHUB_STEP_SUMMARY"
+            # Fresh is the verdict whatever the issue calls do; a leftover issue is
+            # closed by the next run.
+            if [ "$looked_up" = 0 ]; then
+              echo "::warning::could not look up the stale-data issue; the next run closes it if one is open"
+              echo "Fresh; could not look up the stale-data issue." >> "$GITHUB_STEP_SUMMARY"
+            elif [ -n "$open" ]; then
+              if gh issue close "$open" --comment "The pipeline is alive again: $detail (run ${RUN_URL})."; then
+                echo "Fresh; closed #$open." >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "::warning::could not close #$open; the next run tries again"
+                echo "Fresh; could not close #$open." >> "$GITHUB_STEP_SUMMARY"
+              fi
             else
               echo "Fresh; nothing to do." >> "$GITHUB_STEP_SUMMARY"
             fi
@@ -182,6 +209,11 @@ jobs:
 
           # Stale. Make the run RED and ensure exactly one open issue.
           echo "::error::$detail exceeds the ${threshold}h freshness threshold"
+          if [ "$looked_up" = 0 ]; then
+            # Filing blind could duplicate an open issue; the red run is the signal.
+            echo "Stale, but the stale-data issue lookup failed, so none was filed." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
           if [ -n "$open" ]; then
             echo "Stale-data issue #$open already open, not re-filing." >> "$GITHUB_STEP_SUMMARY"
             exit 1

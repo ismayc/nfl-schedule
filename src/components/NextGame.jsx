@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { dayKey, formatTime, formatZoneAbbr, liveState } from '../utils/time.js'
+import { formatZoneAbbr, liveState, gameDayKey, gameTime } from '../utils/time.js'
 import { TEAM_BY_ABBR } from '../data/teams.js'
 import { useFollow } from '../context/follow.jsx'
 import TeamLogo from './TeamLogo.jsx'
@@ -117,7 +117,7 @@ export default function NextGame({ games, tz }) {
   // ScheduleView tags each day section with id="day-<key>"; a day inside a collapsed
   // month has no element, so the jump is a no-op rather than an error.
   const jumpTo = (g) => {
-    const el = document.getElementById(`day-${dayKey(g.tip, tz)}`)
+    const el = document.getElementById(`day-${gameDayKey(g, tz)}`)
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
@@ -147,7 +147,7 @@ export default function NextGame({ games, tz }) {
           <div className="nm-bottom nm-stack-bottom">
             <Countdown ms={new Date(list[0].tip).getTime() - now} />
             <span className="nm-when">
-              {formatTime(list[0].tip, tz)} {formatZoneAbbr(list[0].tip, tz)}
+              {gameTime(list[0], tz)} {formatZoneAbbr(list[0].tip, tz)}
             </span>
           </div>
         )}
@@ -177,7 +177,7 @@ export default function NextGame({ games, tz }) {
           <Countdown ms={new Date(game.tip).getTime() - now} />
         )}
         <span className="nm-when">
-          {formatTime(game.tip, tz)} {formatZoneAbbr(game.tip, tz)} · {game.city}
+          {gameTime(game, tz)} {formatZoneAbbr(game.tip, tz)} · {game.city}
         </span>
         <button className="nm-jump" onClick={() => jumpTo(game)}>
           Jump to it ↓

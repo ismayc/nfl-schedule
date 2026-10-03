@@ -1,6 +1,6 @@
 import { TEAM_BY_ABBR } from '../data/teams.js'
 import { LEAGUE } from '../config/league.js'
-import { formatTime, formatZoneAbbr, liveState, countdown } from '../utils/time.js'
+import { formatZoneAbbr, liveState, gameCountdown, gameTime } from '../utils/time.js'
 import { watchableServices, broadcastNotBadged, isRegional } from '../utils/watch.js'
 import { useFollow } from '../context/follow.jsx'
 import { useServices } from '../context/services.jsx'
@@ -98,7 +98,7 @@ export default function GameCard({ game, tz, hideScores, onOpen }) {
           <span className="final-badge">Final{game.ot ? (game.ot > 1 ? `/${game.ot}OT` : '/OT') : ''}</span>
         ) : (
           <>
-            <span className="time">{formatTime(game.tip, tz)}</span>
+            <span className="time">{gameTime(game, tz)}</span>
             <span className="zone">{formatZoneAbbr(game.tip, tz)}</span>
           </>
         )}
@@ -136,8 +136,8 @@ export default function GameCard({ game, tz, hideScores, onOpen }) {
             ))}
           </span>
         )}
-        {state === 'upcoming' && countdown(game.tip) && (
-          <span className="countdown">in {countdown(game.tip)}</span>
+        {state === 'upcoming' && gameCountdown(game) && (
+          <span className="countdown">in {gameCountdown(game)}</span>
         )}
       </div>
     </article>

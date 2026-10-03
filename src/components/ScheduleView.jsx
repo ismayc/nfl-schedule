@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect, useState } from 'react'
-import { dayKey, dayLabel, todayKey } from '../utils/time.js'
+import { dayLabel, todayKey, gameDayKey } from '../utils/time.js'
 import { PLAYOFF } from '../config/league.js'
 import GameCard from './GameCard.jsx'
 
@@ -61,7 +61,7 @@ export default function ScheduleView({ games, tz, hideScores, showPast = false, 
   const allDays = useMemo(() => {
     const map = new Map()
     for (const g of games) {
-      const key = dayKey(g.tip, tz)
+      const key = gameDayKey(g, tz)
       if (!map.has(key)) map.set(key, [])
       map.get(key).push(g)
     }

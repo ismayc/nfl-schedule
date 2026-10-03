@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { TEAM_BY_ABBR } from '../data/teams.js'
 import { LEAGUE, PLAYOFF } from '../config/league.js'
-import { formatDate, formatTime, formatZoneAbbr, liveState, countdown } from '../utils/time.js'
+import { formatDate, formatZoneAbbr, liveState, gameCountdown, gameTime } from '../utils/time.js'
 import { computeStandings, countsForStandings } from '../utils/standings.js'
 import { useModalA11y } from '../hooks/useModalA11y.js'
 import TeamLogo from './TeamLogo.jsx'
@@ -216,9 +216,9 @@ export default function GameDetail({ game, games, tz, hideScores, onClose, onPic
               </>
             ) : (
               <>
-                <span className="md-time">{formatTime(game.tip, tz)}</span>
+                <span className="md-time">{gameTime(game, tz)}</span>
                 <span className="md-state">{formatZoneAbbr(game.tip, tz)}</span>
-                {countdown(game.tip) && <span className="md-state">in {countdown(game.tip)}</span>}
+                {gameCountdown(game) && <span className="md-state">in {gameCountdown(game)}</span>}
               </>
             )}
             {game.score && hideScores && (

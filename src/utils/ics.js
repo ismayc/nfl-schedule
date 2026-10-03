@@ -5,6 +5,7 @@
 // Duration, product id, and UID domain come from the league config.
 import { TEAM_BY_ABBR } from '../data/teams.js'
 import { LEAGUE, PLAYOFF } from '../config/league.js'
+import { ESPN_DAY_TZ, gameDayKey, timeTbd } from './time.js'
 
 const DURATION = LEAGUE.ics.durationIso
 const PRODID = LEAGUE.ics.prodId
@@ -64,8 +65,12 @@ function vevent(game, { now }) {
     // Stable UID so re-importing updates events rather than duplicating them.
     `UID:${game.id}@${DOMAIN}`,
     `DTSTAMP:${toIcsDate(now)}`,
-    `DTSTART:${toIcsDate(game.tip)}`,
-    `DURATION:${DURATION}`,
+    // A game with no announced start is an ALL-DAY event, not a timed one. Writing the
+    // placeholder as DTSTART puts a confident midnight-ET entry in the subscriber's
+    // calendar — in Mountain time, 9pm the evening before the game.
+    ...(timeTbd(game)
+      ? [`DTSTART;VALUE=DATE:${gameDayKey(game, ESPN_DAY_TZ).replace(/-/g, '')}`]
+      : [`DTSTART:${toIcsDate(game.tip)}`, `DURATION:${DURATION}`]),
     `SUMMARY:${escapeText(summary)}`,
   ]
   if (where) lines.push(`LOCATION:${escapeText(where)}`)

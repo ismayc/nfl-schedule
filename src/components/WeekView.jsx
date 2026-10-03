@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { dayKey, formatTime } from '../utils/time.js'
+import { gameDayKey, gameTime } from '../utils/time.js'
 import { LEAGUE } from '../config/league.js'
 import { TEAMS } from '../data/teams.js'
 import { useFollow } from '../context/follow.jsx'
@@ -35,7 +35,7 @@ function WkCell({ game, tz, hideScores, followed, onOpen }) {
         ? game.statusLabel || 'Live'
         : final
           ? `Final${game.ot ? '/OT' : ''}`
-          : formatTime(game.tip, tz)
+          : gameTime(game, tz)
 
   const side = (abbr, mineScore, won) => (
     <span className={`wkg-row ${won ? 'won' : ''}`}>
@@ -93,7 +93,7 @@ export default function WeekView({ games, tz, hideScores, week, onWeekChange, on
   const columns = useMemo(() => {
     const byDay = new Map()
     for (const g of weekGames) {
-      const key = dayKey(g.tip, tz)
+      const key = gameDayKey(g, tz)
       if (!byDay.has(key)) byDay.set(key, [])
       byDay.get(key).push(g)
     }

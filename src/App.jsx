@@ -7,9 +7,9 @@ import {
   detectTimezone,
   timezoneOptions,
   formatZoneAbbr,
-  dayKey,
   todayKey,
   whenBucket,
+  gameDayKey,
 } from './utils/time.js'
 import { readState, writeState, VIEWS } from './utils/urlState.js'
 import { parseQuery, matchesSearch } from './utils/search.js'
@@ -266,7 +266,7 @@ export default function App() {
     const today = todayKey(tz)
     const keys = new Set()
     for (const g of scheduleGames) {
-      const key = dayKey(g.tip, tz)
+      const key = gameDayKey(g, tz)
       if (key < today) keys.add(key)
     }
     return keys.size

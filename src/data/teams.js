@@ -337,9 +337,9 @@ export const CONFERENCE_BY_ABBR = {
   "NE": "AFC",
   "NYJ": "AFC",
   "MIA": "AFC",
-  "BAL": "AFC",
   "CLE": "AFC",
   "PIT": "AFC",
+  "BAL": "AFC",
   "CIN": "AFC",
   "JAX": "AFC",
   "IND": "AFC",
@@ -363,8 +363,8 @@ export const CONFERENCE_BY_ABBR = {
   "TB": "NFC",
   "SF": "NFC",
   "SEA": "NFC",
-  "LAR": "NFC",
-  "ARI": "NFC"
+  "ARI": "NFC",
+  "LAR": "NFC"
 }
 
 export const DIVISION_BY_ABBR = {
@@ -372,9 +372,9 @@ export const DIVISION_BY_ABBR = {
   "NE": "AFC East",
   "NYJ": "AFC East",
   "MIA": "AFC East",
-  "BAL": "AFC North",
   "CLE": "AFC North",
   "PIT": "AFC North",
+  "BAL": "AFC North",
   "CIN": "AFC North",
   "JAX": "AFC South",
   "IND": "AFC South",
@@ -398,6 +398,6 @@ export const DIVISION_BY_ABBR = {
   "TB": "NFC South",
   "SF": "NFC West",
   "SEA": "NFC West",
-  "LAR": "NFC West",
-  "ARI": "NFC West"
+  "ARI": "NFC West",
+  "LAR": "NFC West"
 }

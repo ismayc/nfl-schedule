@@ -1,5 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import { postseasonFromScoreboard, gamesFromTeamFeed } from '../scripts/fetch-schedule.mjs'
+import { postseasonFromScoreboard, gamesFromTeamFeed, servesSeason } from '../scripts/fetch-schedule.mjs'
+
+// On the NBA sibling's opening night (2026-10-20) byathlete?season=2027 returned the
+// 2025-26 board, flagged only by requestedSeason.year 2026 while currentSeason read 2027.
+describe('servesSeason', () => {
+  it('rejects a payload that answers with another season', () => {
+    expect(servesSeason({ requestedSeason: { year: 2025 }, currentSeason: { year: 2026 } }, 2026)).toBe(false)
+  })
+  it('accepts the season asked for, number or string', () => {
+    expect(servesSeason({ requestedSeason: { year: 2026 } }, 2026)).toBe(true)
+    expect(servesSeason({ requestedSeason: { year: 2025 } }, '2025')).toBe(true)
+  })
+  it('takes a payload without requestedSeason at its word', () => {
+    expect(servesSeason({}, 2026)).toBe(true)
+  })
+})
 
 // The team-schedule feed lags the bracket by days, so postseason games come from the
 // scoreboard too. Shapes below are trimmed from the real 2026-01-10 (wild card) and

@@ -333,12 +333,25 @@ const LEADER_SORTS = [
   'defensiveInterceptions.interceptions',
 ]
 
+// True unless the byathlete payload names a different season than the one requested.
+// Before a season's first stats are posted, ESPN can answer the new season with the
+// PREVIOUS one's board, flagged only in `requestedSeason` (seen on the NBA sibling's
+// opening night, 2026-10-20). A payload without `requestedSeason` is taken at its word:
+// for a season ESPN has not opened yet it carries no athletes at all.
+export const servesSeason = (payload, season) =>
+  payload?.requestedSeason?.year == null || String(payload.requestedSeason.year) === String(season)
+
 export async function fetchLeaders(season = SEASON) {
   const byId = new Map()
   for (const sort of LEADER_SORTS) {
     const d = await getJson(
       `${WEB}/${ESPN_PATH}/statistics/byathlete?region=us&lang=en&season=${season}&seasontype=2&limit=300&sort=${sort}%3Adesc`
     )
+    // Every sort reads the same season, so one off-season answer means no players yet.
+    if (!servesSeason(d, season)) {
+      console.warn(`  byathlete answered season ${d.requestedSeason.year}, not ${season}; no players yet`)
+      return []
+    }
     // The category name→index mapping is defined once at the top level; each athlete's
     // per-category `values` array aligns to it index-for-index.
     const catNames = Object.fromEntries((d.categories || []).map((c) => [c.name, c.names || []]))

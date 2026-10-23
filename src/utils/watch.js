@@ -21,8 +21,12 @@ import { GAMES } from '../data/schedule.js'
 // mapping — carriage depends on where you live. Any such name in the data becomes a
 // pickable entry instead; see LOCAL_CATALOG below.
 
-// National network names, by the exact string ESPN emits in `broadcast`.
-const FOX = 'FOX'
+// National network names, as ESPN spells them in `broadcast`. Every comparison below
+// goes through nameKey (case-insensitive), because ESPN changes the case without
+// notice: the October 5, 2026 refresh turned all 94 "FOX" entries into "Fox", and the
+// exact match then read every Fox game as on no service, listed "Fox" as a local
+// channel, and dropped the Fox Sunday slate from Sunday Ticket.
+const FOX = 'Fox'
 const CBS = 'CBS'
 const NBC = 'NBC'
 const ESPN = 'ESPN'
@@ -36,9 +40,11 @@ const LOCALS = [FOX, CBS, NBC, ABC]
 
 // carries(...names) → a matcher that's true when a game's broadcast list names any
 // of them.
+const nameKey = (n) => String(n).toLowerCase()
+const nameSet = (names) => new Set(names.map(nameKey))
 const carries = (...names) => {
-  const set = new Set(names)
-  return (broadcast) => broadcast.some((n) => set.has(n))
+  const set = nameSet(names)
+  return (broadcast) => broadcast.some((n) => set.has(nameKey(n)))
 }
 
 // Ordered streaming-first, then live-TV bundles. This is also the display order for
@@ -71,7 +77,7 @@ export const SERVICE_CATALOG = [
 // outside this set lands in the local-channel picker. The NFL's slate is entirely
 // national today, so this catalog is normally EMPTY and the picker's local section
 // hides itself — it exists so a market feed ESPN starts naming shows up on its own.
-const NATIONAL_NAMES = new Set([
+const NATIONAL_NAMES = nameSet([
   FOX,
   CBS,
   NBC,
@@ -97,7 +103,7 @@ export function localChannelCatalog(games) {
   const teamsByName = new Map()
   for (const g of games) {
     for (const b of g.broadcast || []) {
-      if (NATIONAL_NAMES.has(b)) continue
+      if (NATIONAL_NAMES.has(nameKey(b))) continue
       const prev = teamsByName.get(b)
       const pair = [g.home, g.away]
       teamsByName.set(b, new Set(prev ? pair.filter((t) => prev.has(t)) : pair))
@@ -130,8 +136,8 @@ export const SERVICE_BY_KEY = Object.fromEntries(SERVICE_CATALOG.map((s) => [s.k
 // match a broadcast name, so their underlying network (FOX, CBS, …) is left in place.
 export function broadcastNotBadged(broadcast, watched) {
   if (!broadcast?.length) return []
-  const shown = new Set((watched || []).map((s) => s.label))
-  return broadcast.filter((b) => !shown.has(b))
+  const shown = nameSet((watched || []).map((s) => s.label))
+  return broadcast.filter((b) => !shown.has(nameKey(b)))
 }
 
 // The viewer's selected services (by key) that carry this game, in catalog order.
@@ -151,7 +157,7 @@ export function watchableServices(broadcast, selectedKeys, game) {
 // FOX is regionally distributed — which of those games your TV market gets depends on
 // where you are. Every other window (Sun/Mon/Thu night, Prime/ESPN/ABC/NBC/Netflix/
 // NFL Net, Thanksgiving, international mornings) is one national telecast.
-const REGIONAL_NETS = new Set([CBS, FOX])
+const REGIONAL_NETS = nameSet([CBS, FOX])
 // Hoisted: an Intl.DateTimeFormat is expensive to construct, and this now runs per
 // game inside the watch filter, not just once per rendered card.
 const REGIONAL_WINDOW_FMT = new Intl.DateTimeFormat('en-US', {
@@ -162,7 +168,7 @@ const REGIONAL_WINDOW_FMT = new Intl.DateTimeFormat('en-US', {
 })
 export function isRegional(game) {
   const b = game.broadcast || []
-  if (b.length !== 1 || !REGIONAL_NETS.has(b[0])) return false
+  if (b.length !== 1 || !REGIONAL_NETS.has(nameKey(b[0]))) return false
   const parts = REGIONAL_WINDOW_FMT.formatToParts(new Date(game.tip))
   const weekday = parts.find((p) => p.type === 'weekday')?.value
   const hour = Number(parts.find((p) => p.type === 'hour')?.value) % 24

@@ -69,6 +69,20 @@ describe('watchableServices', () => {
     expect(labels(['FOX'], ['sundayticket'])).toEqual([])
   })
 
+  // ESPN sent "FOX" until the October 5, 2026 refresh and "Fox" after it. The exact
+  // match read every Fox game as on no service at all.
+  it('matches a network whatever case ESPN spells it in', () => {
+    for (const name of ['Fox', 'FOX', 'fox']) {
+      expect(labels([name], ['youtubetv', 'antenna'])).toEqual(['Antenna (local TV)', 'YouTube TV'])
+      expect(isRegional({ broadcast: [name], tip: sunAfternoon.tip })).toBe(true)
+      expect(labels([name], ['sundayticket'], { broadcast: [name], tip: sunAfternoon.tip })).toEqual([
+        'NFL Sunday Ticket',
+      ])
+    }
+    expect(localChannelCatalog([{ home: 'LAR', away: 'LV', broadcast: ['Fox', 'cbs'] }])).toEqual([])
+    expect(broadcastNotBadged(['prime video'], [SERVICE_BY_KEY.prime])).toEqual([])
+  })
+
   it('excludes an unknown/regional feed name nothing matches', () => {
     expect(labels(['FOX Deportes'], ['youtubetv', 'cable', 'antenna'])).toEqual([])
   })

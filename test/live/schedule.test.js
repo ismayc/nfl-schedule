@@ -16,6 +16,7 @@
 import { describe, it, expect } from 'vitest'
 import { GAMES, SEASON_TYPES } from '../../src/data/schedule.js'
 import { ALL_ABBRS, SEASON } from '../../src/data/teams.js'
+import { SERVICE_CATALOG, watchableServices } from '../../src/utils/watch.js'
 
 const regular = GAMES.filter((g) => g.seasonType === 'regular')
 const postseason = GAMES.filter((g) => g.seasonType === 'postseason')
@@ -143,5 +144,19 @@ describe('the postseason, once it exists', () => {
     expect(count('DIV')).toBeLessThanOrEqual(4)
     expect(count('CONF')).toBeLessThanOrEqual(2)
     expect(count('SB')).toBeLessThanOrEqual(1)
+  })
+})
+
+// Every NFL game is on a national network or streamer, so with every national service
+// selected, each game that names a channel must be watchable. This is the check the
+// frozen suite cannot make: the October 5, 2026 refresh turned all 94 "FOX" entries into
+// "Fox", the watch code matched names exactly, and every Fox game read as on no service,
+// while the frozen data (still "FOX") kept the main suite green. A network name the
+// catalog does not know, in any spelling, fails here on the refresh that brings it in.
+describe('channels', () => {
+  it('matches every listed channel to a national service', () => {
+    const all = SERVICE_CATALOG.map((s) => s.key)
+    const unmatched = GAMES.filter((g) => g.broadcast?.length && !watchableServices(g.broadcast, all, g).length)
+    expect([...new Set(unmatched.map((g) => g.broadcast.join(' + ')))]).toEqual([])
   })
 })

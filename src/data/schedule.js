@@ -133,7 +133,7 @@ export const GAMES = [
   {"id":"401873044","tip":"2026-11-08T18:00:00.000Z","seasonType":"regular","week":9,"home":"PHI","away":"NYG","venue":"Lincoln Financial Field","city":"Philadelphia","state":"PA","broadcast":["Fox"]},
   {"id":"401873045","tip":"2026-11-08T18:00:00.000Z","seasonType":"regular","week":9,"home":"KC","away":"NYJ","venue":"Arrowhead Stadium","city":"Kansas City","state":"MO","broadcast":["CBS"]},
   {"id":"401873046","tip":"2026-11-08T21:05:00.000Z","seasonType":"regular","week":9,"home":"LAC","away":"HOU","venue":"SoFi Stadium","city":"Inglewood","state":"CA","broadcast":["CBS"]},
-  {"id":"401873047","tip":"2026-11-08T21:05:00.000Z","seasonType":"regular","week":9,"home":"SF","away":"LV","venue":"Levi's Stadium","city":"Santa Clara","state":"CA","broadcast":["CBS"]},
+  {"id":"401873047","tip":"2026-11-08T21:25:00.000Z","seasonType":"regular","week":9,"home":"SF","away":"LV","venue":"Levi's Stadium","city":"Santa Clara","state":"CA","broadcast":["Fox"]},
   {"id":"401873048","tip":"2026-11-08T21:25:00.000Z","seasonType":"regular","week":9,"home":"SEA","away":"ARI","venue":"Lumen Field","city":"Seattle","state":"WA","broadcast":["Fox"]},
   {"id":"401873049","tip":"2026-11-08T21:25:00.000Z","seasonType":"regular","week":9,"home":"NE","away":"GB","venue":"Gillette Stadium","city":"Foxborough","state":"MA","broadcast":["Fox"]},
   {"id":"401873050","tip":"2026-11-09T01:20:00.000Z","seasonType":"regular","week":9,"home":"CHI","away":"TB","venue":"Soldier Field","city":"Chicago","state":"IL","broadcast":["NBC"]},

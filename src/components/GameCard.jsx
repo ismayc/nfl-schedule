@@ -8,7 +8,10 @@ import TeamLogo from './TeamLogo.jsx'
 
 // Halftime and end-of-quarter are stable states; a running clock is not. Falls back
 // to ESPN's own label when the period is unknown.
-export function livePeriod(game) {
+// Spoiler-free mode shows only LIVE: an OT label says the game was tied after
+// regulation, and a badge that kept Q1-Q4 would give that away when it switched.
+export function livePeriod(game, hideScores = false) {
+  if (hideScores) return 'LIVE'
   const label = game.statusLabel || ''
   if (/half/i.test(label)) return 'HALF'
   if (/end/i.test(label)) return label.toUpperCase()
@@ -89,13 +92,19 @@ export default function GameCard({ game, tz, hideScores, onOpen }) {
           // A football score can change on any snap and the game clock runs live, so
           // anything shown here is stale by up to one refresh. The quarter is durable
           // enough to display; the exact game clock is not, so it stays in the tooltip.
-          <span className="live-badge" title={`${game.statusLabel || 'Live'} — as of the last refresh`}>
-            ● {livePeriod(game)}
+          <span
+            className="live-badge"
+            title={`${(!hideScores && game.statusLabel) || 'Live'} — as of the last refresh`}
+          >
+            ● {livePeriod(game, hideScores)}
           </span>
         ) : state === 'void' ? (
           <span className="void-badge">{game.canceled ? 'Canceled' : 'Postponed'}</span>
         ) : game.score ? (
-          <span className="final-badge">Final{game.ot ? (game.ot > 1 ? `/${game.ot}OT` : '/OT') : ''}</span>
+          // The OT suffix is a spoiler too: it says the game was tied after four quarters.
+          <span className="final-badge">
+            Final{game.ot && !hideScores ? (game.ot > 1 ? `/${game.ot}OT` : '/OT') : ''}
+          </span>
         ) : (
           <>
             <span className="time">{gameTime(game, tz)}</span>

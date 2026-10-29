@@ -4,6 +4,17 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-10-29
+
+- **Spoiler-free mode no longer gives away overtime or the winner** (issue #1). With
+  scores hidden, a final still read "Final/OT", which says the game was tied after four
+  quarters. Finals now read only "Final" on the game cards and in the Week view. A live
+  game reads only "LIVE" on the card, the Week view, and the next-game banner, since an
+  "OT" badge (or a "Q4" badge that later changes) tells the same story; the badge
+  tooltip drops ESPN's clock too. The Week view also stopped putting the winner's row in
+  bold while scores are hidden. The game popout already hid all of this until "Reveal
+  score".
+
 ## 2026-10-20
 
 - **A new season's stats can no longer show last season's leaders.** On the NBA

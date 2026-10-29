@@ -560,7 +560,7 @@ export default function App() {
       )}
 
       <main>
-        {view === 'schedule' && <NextGame games={scheduleGames} tz={tz} />}
+        {view === 'schedule' && <NextGame games={scheduleGames} tz={tz} hideScores={hideScores} />}
         {view === 'schedule' && (
           <ScheduleView
             games={scheduleGames}

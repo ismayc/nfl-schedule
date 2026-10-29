@@ -32,9 +32,9 @@ function WkCell({ game, tz, hideScores, followed, onOpen }) {
     : game.canceled
       ? 'Canceled'
       : game.live
-        ? game.statusLabel || 'Live'
+        ? (!hideScores && game.statusLabel) || 'Live'
         : final
-          ? `Final${game.ot ? '/OT' : ''}`
+          ? `Final${game.ot && !hideScores ? '/OT' : ''}`
           : gameTime(game, tz)
 
   const side = (abbr, mineScore, won) => (
@@ -51,8 +51,9 @@ function WkCell({ game, tz, hideScores, followed, onOpen }) {
       className={`wkg-cell ${mine ? 'is-mine' : ''} ${game.live ? 'is-live' : ''}`}
       onClick={() => onOpen?.(game)}
     >
-      {side(game.away, as, final && as > hs)}
-      {side(game.home, hs, final && hs > as)}
+      {/* The bold winner row is a spoiler too, so it stays off while scores are hidden. */}
+      {side(game.away, as, final && !hideScores && as > hs)}
+      {side(game.home, hs, final && !hideScores && hs > as)}
       <span className={`wkg-foot ${game.live ? 'is-live' : ''}`}>{label}</span>
     </button>
   )

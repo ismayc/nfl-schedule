@@ -144,6 +144,22 @@ describe('game cells', () => {
     renderWeek({ games: [g({ score: [24, 17] })], week: 3, hideScores: true })
     expect(screen.queryByText('24')).toBeNull()
     expect(screen.getByText('Final')).toBeInTheDocument()
+    // A bold winner row gives the result away as surely as the score does.
+    expect(document.querySelector('.wkg-row.won')).toBeNull()
+  })
+
+  // Issue #1: "Final/OT" told a spoiler-free viewer the game was tied after regulation.
+  it('drops the OT tag and the live clock in spoiler-free mode', () => {
+    const { rerender } = renderWeek({ games: [g({ score: [17, 24], ot: 1 })], week: 3, hideScores: true })
+    expect(screen.queryByText('Final/OT')).toBeNull()
+    expect(screen.getByText('Final')).toBeInTheDocument()
+    rerender(
+      <FollowProvider>
+        <WeekView tz={TZ} games={[g({ live: true, statusLabel: 'OT 5:12' })]} week={3} hideScores onOpen={() => {}} />
+      </FollowProvider>
+    )
+    expect(screen.queryByText('OT 5:12')).toBeNull()
+    expect(screen.getByText('Live')).toBeInTheDocument()
   })
 
   it('shows the live status label, or a generic "Live" when none is given', () => {

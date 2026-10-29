@@ -89,6 +89,19 @@ describe('GameCard', () => {
     expect(container.querySelectorAll('.side-score')).toHaveLength(0)
   })
 
+  // Issue #1: an OT tag, final or live, says the game was tied after regulation.
+  it('shows no overtime and no live period in spoiler-free mode', () => {
+    const { container, unmount } = render(<GameCard game={g({ score: [24, 17], ot: 2 })} tz={TZ} hideScores />)
+    expect(container.querySelector('.final-badge').textContent).toBe('Final')
+    unmount()
+    const { container: c1 } = render(
+      <GameCard game={g({ live: true, period: 5, statusLabel: 'OT 5:12' })} tz={TZ} hideScores />
+    )
+    const badge = c1.querySelector('.live-badge')
+    expect(badge.textContent.trim()).toBe('● LIVE')
+    expect(badge.getAttribute('title')).not.toMatch(/OT/)
+  })
+
   it('shows venue-with-city, note, and truncated broadcast meta', () => {
     const { container } = render(
       <GameCard

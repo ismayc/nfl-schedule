@@ -42,6 +42,12 @@ describe('Toasts', () => {
     expect(screen.getByText('Tied in the fourth quarter')).toBeInTheDocument()
   })
 
+  it('says overtime, not the fourth quarter, for a close game past regulation', () => {
+    const ot = { ...game, period: 5 }
+    render(<Toasts events={[evt({ kind: 'nailbiter', game: ot, leader: 'KC', margin: 2 })]} />)
+    expect(screen.getByText('Chiefs by 2 in overtime')).toBeInTheDocument()
+  })
+
   it('phrases a final winner-first for a home and an away winner, and a tie', () => {
     // Home KC won 24–17.
     const { rerender } = render(<Toasts events={[evt({ kind: 'final', leader: 'KC' })]} />)

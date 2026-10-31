@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { buildBracket } from '../utils/bracket.js'
+import { buildBracket, blindBracket } from '../utils/bracket.js'
 import { PLAYOFF } from '../config/league.js'
 import { TEAM_BY_ABBR } from '../data/teams.js'
 import { useFollow } from '../context/follow.jsx'
@@ -57,6 +57,8 @@ function Match({ m, onPick, onOpen }) {
   const decided = m.played
   const homeScore = m.score?.[0]
   const awayScore = m.score?.[1]
+  // Spoiler-free mode (see blindBracket) clears `played` but keeps the game's handle.
+  const canOpen = (decided || m.playedHidden) && m.id
 
   return (
     <div
@@ -80,13 +82,13 @@ function Match({ m, onPick, onOpen }) {
         decided={decided}
         onPick={onPick}
       />
-      {(m.live || (m.statusLabel && !decided) || (decided && m.id)) && (
+      {(m.live || (m.statusLabel && !decided) || canOpen) && (
         <div className="bx-match-foot">
           {m.live && <span className="bx-live">● LIVE</span>}
           {m.statusLabel && <span className="bx-match-status">{m.statusLabel}</span>}
           {/* The matchup is the only per-game handle the bracket offers; without this
               there's no way to ask what actually happened in a playoff game. */}
-          {decided && m.id && (
+          {canOpen && (
             <button className="bx-match-open" onClick={() => onOpen?.(m)}>
               Box score
             </button>
@@ -152,8 +154,11 @@ function ConfBracket({ conf, data, side, onPick, onOpen }) {
 // through exactly this component. A historical season ships its final standings and only
 // its 13 postseason games, so it passes `seeds` in rather than having them derived from
 // regular-season results it doesn't carry.
-export function BracketBody({ games, seeds, tz, onPick, onOpen }) {
-  const bracket = useMemo(() => buildBracket(games, seeds), [games, seeds])
+export function BracketBody({ games, seeds, tz, onPick, onOpen, hideScores = false }) {
+  const bracket = useMemo(() => {
+    const built = buildBracket(games, seeds)
+    return hideScores ? blindBracket(built) : built
+  }, [games, seeds, hideScores])
   const { conferences, sb, champion, regularSeasonStarted, hasPostseason } = bracket
 
   return (
@@ -207,7 +212,7 @@ export function BracketBody({ games, seeds, tz, onPick, onOpen }) {
   )
 }
 
-export default function Bracket({ games, tz, onPick, onOpen }) {
+export default function Bracket({ games, tz, onPick, onOpen, hideScores = false }) {
   return (
     <section className="view">
       <div className="view-head">
@@ -220,7 +225,7 @@ export default function Bracket({ games, tz, onPick, onOpen }) {
         </div>
       </div>
 
-      <BracketBody games={games} tz={tz} onPick={onPick} onOpen={onOpen} />
+      <BracketBody games={games} tz={tz} onPick={onPick} onOpen={onOpen} hideScores={hideScores} />
     </section>
   )
 }

@@ -171,3 +171,45 @@ export function buildBracket(games, seeds = conferenceSeeds(games)) {
     hasPostseason: postseason.length > 0,
   }
 }
+
+// Spoiler-free mode: the same bracket with every result taken out. A game keeps its id,
+// tip, and live flag (so it can still be opened, and a live one still says LIVE), but
+// loses its score, its winner, and a finished game's status line ("Final/OT" says it went
+// to overtime); an upcoming game's status line is its date, which stays. A slot a team
+// reached by WINNING is left empty (TBD), as it is before that game is decided: the Wild
+// Card round is the seeding and keeps both teams, the Divisional round keeps only the
+// No. 1 seed coming off its bye, and the conference championships and Super Bowl keep none.
+function blindMatch(m, keep) {
+  const home = keep(m.home) ? m.home : null
+  const away = keep(m.away) ? m.away : null
+  return {
+    ...m,
+    home,
+    away,
+    seedHome: home ? m.seedHome : undefined,
+    seedAway: away ? m.seedAway : undefined,
+    score: undefined,
+    winner: undefined,
+    statusLabel: m.played || m.live ? undefined : m.statusLabel,
+    played: false,
+    // The game happened, so the bracket keeps its handle onto the box score.
+    playedHidden: m.played,
+  }
+}
+
+export function blindBracket(bracket) {
+  const all = () => true
+  const none = () => false
+  const conferences = {}
+  for (const [key, c] of Object.entries(bracket.conferences)) {
+    const bye = (abbr) => abbr === c.byeTeam
+    conferences[key] = {
+      ...c,
+      WC: c.WC.map((m) => blindMatch(m, all)),
+      DIV: c.DIV.map((m) => blindMatch(m, bye)),
+      CONF: blindMatch(c.CONF, none),
+      champion: undefined,
+    }
+  }
+  return { ...bracket, conferences, sb: blindMatch(bracket.sb, none), champion: undefined }
+}

@@ -4,6 +4,15 @@ import { LEAGUE } from '../config/league.js'
 
 const nick = (abbr) => TEAM_BY_ABBR[abbr]?.name || abbr
 
+// A close finish fires from the last regulation period on, so overtime needs its own
+// words. The men's college game has two halves, so its last period is the second half.
+const lateIn = (g) => {
+  const n = LEAGUE.regulationPeriods
+  if ((g.period ?? 0) > n) return 'in overtime'
+  // A lookup, not a ternary: each league only ever has one of the two values.
+  return { 2: 'in the second half', 4: 'in the fourth quarter' }[n]
+}
+
 function describe(e) {
   const { game: g, leader, margin } = e
   switch (e.kind) {
@@ -19,10 +28,7 @@ function describe(e) {
       return {
         icon: '🔥',
         label: 'Close game',
-        text:
-          margin === 0
-            ? 'Tied in the fourth quarter'
-            : `${nick(leader)} by ${margin} in the fourth quarter`,
+        text: margin === 0 ? `Tied ${lateIn(g)}` : `${nick(leader)} by ${margin} ${lateIn(g)}`,
       }
     case 'final': {
       const [hs, as] = g.score

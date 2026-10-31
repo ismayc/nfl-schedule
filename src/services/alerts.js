@@ -29,6 +29,13 @@ const byId = (games) => new Map(games.map((g) => [g.id, g]))
 
 export const EVENT_KINDS = ['kickoff', 'lead-change', 'nailbiter', 'final']
 
+// Spoiler-free mode keeps only the start alert. Every other kind says who leads, by
+// how much, how close it is, or who won, and a close-finish alert with no score in it
+// still says the game is close.
+export const START_KINDS = new Set(['kickoff'])
+export const spoilerSafe = (events, hideScores) =>
+  hideScores ? events.filter((e) => START_KINDS.has(e.kind)) : events
+
 /**
  * Diff two snapshots of the game list and return notable moments.
  * `prev` of null means first load — nothing is notable yet, because everything would

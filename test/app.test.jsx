@@ -539,6 +539,34 @@ describe('App — the live overlay', () => {
     await waitFor(() => expect(stack).toHaveTextContent('Final'), { timeout: 10_000 })
     expect(stack).toHaveTextContent('Kickoff')
   })
+
+  it('keeps the kickoff but drops the final toast in spoiler-free mode', async () => {
+    localStorage.setItem('nfl:alerts', '1')
+    // The NFL viewer keeps spoiler-free mode in the URL, not in localStorage.
+    window.history.replaceState(null, '', '/?hide=1')
+    let release
+    const gate = new Promise((r) => { release = r })
+    let calls = 0
+    fetch.mockImplementation(async () => {
+      calls += 1
+      if (calls <= 3) return { ok: true, json: async () => ({ events: ev(false) }) }
+      await gate
+      return { ok: true, json: async () => ({ events: ev(true) }) }
+    })
+
+    renderApp()
+    const stack = await screen.findByRole('status', {}, { timeout: 10_000 })
+    expect(stack).toHaveTextContent('Kickoff')
+    release()
+    // Wait for the poll that carries the final to land, then check that no final
+    // toast (which names the winner and the score) joined the kickoff.
+    await waitFor(() => expect(calls).toBeGreaterThan(3), { timeout: 10_000 })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 300))
+    })
+    expect(stack).toHaveTextContent('Kickoff')
+    expect(stack).not.toHaveTextContent('Final')
+  })
 })
 
 describe('game deep link', () => {

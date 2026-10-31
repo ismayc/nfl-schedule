@@ -4,6 +4,17 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-10-31
+
+- **Spoiler-free mode keeps only the kickoff alert.** Lead-change, close-finish, and final alerts say who leads,
+  how close it is, or who won, so with scores hidden only the kickoff alert shows.
+- **A close finish in overtime now says "in overtime".** The close-finish alert now says
+  "in the fourth quarter" in regulation and "in overtime" after it.
+- **The playoff bracket hides results in spoiler-free mode.** It shows no scores or
+  series wins, no winner or loser styling, and no champion, and a slot that a team
+  won its way into stays empty until scores are shown. A live game shows only
+  "LIVE".
+
 ## 2026-10-29
 
 - **Spoiler-free mode no longer gives away overtime or the winner** (issue #1). With

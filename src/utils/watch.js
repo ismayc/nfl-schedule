@@ -53,7 +53,9 @@ export const SERVICE_CATALOG = [
   { key: 'prime', label: 'Prime Video', kind: 'stream', match: carries(PRIME) },
   { key: 'peacock', label: 'Peacock', kind: 'stream', match: carries('Peacock', NBC) },
   { key: 'paramount', label: 'Paramount+', kind: 'stream', match: carries('Paramount+', CBS) },
-  { key: 'espn', label: 'ESPN', kind: 'stream', match: carries('ESPN+', ESPN) },
+  // Disney+ streams some ESPN games (ESPN tagged DAL @ PHI, October 26, 2026, "ESPN",
+  // "ABC", "Disney+"); it is the same ESPN package, not a local feed.
+  { key: 'espn', label: 'ESPN', kind: 'stream', match: carries('ESPN+', ESPN, 'Disney+') },
   { key: 'netflix', label: 'Netflix', kind: 'stream', match: carries(NETFLIX) },
   { key: 'nflplus', label: 'NFL+', kind: 'stream', match: carries('NFL+', NFLNET) },
   {
@@ -87,6 +89,7 @@ const NATIONAL_NAMES = nameSet([
   NFLNET,
   NETFLIX,
   'ESPN+',
+  'Disney+',
   'Peacock',
   'Paramount+',
   'NFL+',

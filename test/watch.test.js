@@ -28,6 +28,10 @@ describe('watchableServices', () => {
     expect(labels(['NBC'], ['peacock'])).toEqual(['Peacock'])
     // Paramount+ streams the CBS game.
     expect(labels(['CBS'], ['paramount'])).toEqual(['Paramount+'])
+    // Disney+ streams some ESPN games (DAL @ PHI, October 26, 2026 was tagged
+    // "ESPN", "ABC", "Disney+"); it is the ESPN package, not a local channel.
+    expect(labels(['Disney+'], ['espn'])).toEqual(['ESPN'])
+    expect(localChannelCatalog([{ home: 'PHI', away: 'DAL', broadcast: ['ESPN', 'ABC', 'Disney+'] }])).toEqual([])
   })
 
   it('only reports services the viewer has selected', () => {

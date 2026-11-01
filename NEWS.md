@@ -4,7 +4,12 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
-## 2026-10-31
+## 2026-11-01
+
+- **Disney+ is an ESPN stream, not a local channel.** ESPN tagged the October 26
+  Cowboys at Eagles game "ESPN", "ABC", and "Disney+", and the picker listed Disney+
+  as a local channel. It now counts for the ESPN service and stays out of the local
+  shelf.
 
 - **Spoiler-free mode keeps only the kickoff alert.** Lead-change, close-finish, and final alerts say who leads,
   how close it is, or who won, so with scores hidden only the kickoff alert shows.

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { render, screen, within, cleanup } from '@testing-library/react'
+import { act, render, screen, within, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Bracket from '../src/components/Bracket.jsx'
 import { FollowProvider } from '../src/context/follow.jsx'
@@ -12,6 +12,79 @@ const REG = GAMES_2025.filter((g) => g.seasonType === 'regular')
 
 afterEach(cleanup)
 beforeEach(() => localStorage.clear())
+
+// Below 720px the seven-column tree printed over itself: round headers on top of each
+// other and cards covering cards. Phones get one round at a time instead.
+describe('Bracket on a phone', () => {
+  const realMatchMedia = window.matchMedia
+  let fire
+  let matches
+  beforeEach(() => {
+    matches = true
+    window.matchMedia = vi.fn(() => ({
+      get matches() {
+        return matches
+      },
+      addEventListener: (_, fn) => {
+        fire = fn
+      },
+      removeEventListener: () => {},
+    }))
+  })
+  afterEach(() => {
+    window.matchMedia = realMatchMedia
+  })
+  const tab = (name) => screen.getByRole('tab', { name })
+
+  it('drops the tree and opens a finished postseason on the Super Bowl', () => {
+    const { container } = render(<Bracket games={GAMES_2025} tz={TZ} />)
+    expect(container.querySelector('.bx-bracket')).toBeNull()
+    expect(tab('Super Bowl')).toHaveAttribute('aria-selected', 'true')
+    expect(container.querySelectorAll('.bx-mobile-list .bx-match')).toHaveLength(1)
+    expect(container.querySelector('.bx-mobile-list .bx-sb-champ')).toHaveTextContent('Seahawks')
+  })
+
+  it('shows each round for both conferences, with the byes under the Wild Card', async () => {
+    const { container } = render(<Bracket games={GAMES_2025} tz={TZ} />)
+    const cards = () => container.querySelectorAll('.bx-mobile-list .bx-match').length
+    await userEvent.click(tab('Wild Card'))
+    expect(cards()).toBe(6)
+    expect(screen.getAllByText('Bye')).toHaveLength(2)
+    expect(screen.getByRole('heading', { name: 'AFC' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'NFC' })).toBeInTheDocument()
+    await userEvent.click(tab('Divisional'))
+    expect(cards()).toBe(4)
+    expect(screen.queryByText('Bye')).not.toBeInTheDocument()
+    await userEvent.click(tab('Conference'))
+    expect(cards()).toBe(2)
+  })
+
+  it('opens on the Wild Card while no game is played, and shows no champion', () => {
+    const { container } = render(<Bracket games={REG} tz={TZ} />)
+    expect(tab('Wild Card')).toHaveAttribute('aria-selected', 'true')
+    expect(container.querySelector('.bx-match-proj')).toBeTruthy()
+    expect(container.querySelector('.bx-sb-champ')).toBeNull()
+  })
+
+  it('opens on the Wild Card in spoiler-free mode, so the tab leaks no result', () => {
+    render(<Bracket games={GAMES_2025} tz={TZ} hideScores />)
+    expect(tab('Wild Card')).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('shows no champion on an undecided Super Bowl', async () => {
+    const { container } = render(<Bracket games={REG} tz={TZ} />)
+    await userEvent.click(tab('Super Bowl'))
+    expect(container.querySelectorAll('.bx-mobile-list .bx-match')).toHaveLength(1)
+    expect(container.querySelector('.bx-sb-champ')).toBeNull()
+  })
+
+  it('returns to the tree when the screen widens', () => {
+    const { container } = render(<Bracket games={GAMES_2025} tz={TZ} />)
+    matches = false
+    act(() => fire())
+    expect(container.querySelector('.bx-bracket')).toBeTruthy()
+  })
+})
 
 describe('Bracket — before the season starts', () => {
   it('shows the placeholder card on the empty 2026 snapshot', () => {

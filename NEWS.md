@@ -4,6 +4,11 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-11-02
+
+- **The playoff bracket fits a phone.** Below 720px it shows one round at a time, chosen from pills, as the NBA viewer does. The seven-column tree used to print over itself there, with round headers on top of each other and cards covering cards. Wider screens keep the tree and scroll it sideways, and the History tab gets the same fix.
+- **No more sideways page scroll on a phone.** The leaders tables, History standings, and team panel rosters now stay inside the screen. The schedule's time column also fits times like 11:00 AM.
+
 ## 2026-11-01
 
 - **Disney+ is an ESPN stream, not a local channel.** ESPN tagged the October 26

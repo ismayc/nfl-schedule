@@ -1,9 +1,28 @@
-import { useMemo } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { buildBracket, blindBracket } from '../utils/bracket.js'
 import { PLAYOFF } from '../config/league.js'
 import { TEAM_BY_ABBR } from '../data/teams.js'
 import { useFollow } from '../context/follow.jsx'
 import TeamLogo from './TeamLogo.jsx'
+
+// Track a CSS media query, as the NBA bracket does. jsdom (tests) has no matchMedia, so this
+// reports false there and the desktop layout renders.
+function useMediaQuery(query) {
+  const supported = typeof window.matchMedia === 'function'
+  const [matches, setMatches] = useState(() => (supported ? window.matchMedia(query).matches : false))
+  useEffect(() => {
+    if (!supported) return
+    const mq = window.matchMedia(query)
+    const on = () => setMatches(mq.matches)
+    on()
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [query, supported])
+  return matches
+}
+
+// Pill labels for the phone round selector. "Conf" alone reads as a fragment on a button.
+const ROUND_PILL = { WC: 'Wild Card', DIV: 'Divisional', CONF: 'Conference', SB: 'Super Bowl' }
 
 // Nothing from the WNBA bracket carries over: that one is a best-of-N SERIES tree (series
 // dots, "best of", win counts). The NFL is SINGLE ELIMINATION — every slot is one game, so
@@ -148,6 +167,60 @@ function ConfBracket({ conf, data, side, onPick, onOpen }) {
   )
 }
 
+// Phones: one round at a time, chosen from a pill selector, as a full-width list. Seven
+// columns of cards cannot fit a 390px screen, and the NBA bracket uses this same pattern.
+function MobileBracket({ conferences, sb, champion, onPick, onOpen }) {
+  const groups = {
+    WC: (c) => conferences[c].WC,
+    DIV: (c) => conferences[c].DIV,
+    CONF: (c) => [conferences[c].CONF],
+  }
+  const decided = (m) => m.played
+  const firstOpen = ['WC', 'DIV', 'CONF'].find((k) =>
+    ['AFC', 'NFC'].some((c) => !groups[k](c).every(decided))
+  )
+  // Open on the earliest round still undecided, else the Super Bowl.
+  const [active, setActive] = useState(firstOpen ?? 'SB')
+
+  return (
+    <div className="bx-mobile">
+      <div className="bx-round-tabs" role="tablist" aria-label="Playoff rounds">
+        {Object.keys(ROUND_PILL).map((key) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={key === active}
+            className={`bx-round-btn${key === active ? ' active' : ''}`}
+            onClick={() => setActive(key)}
+          >
+            {ROUND_PILL[key]}
+          </button>
+        ))}
+      </div>
+      <div className="bx-mobile-list">
+        {active === 'SB' ? (
+          <>
+            <Match m={sb} onPick={onPick} onOpen={onOpen} />
+            {champion && <div className="bx-sb-champ">🏆 {TEAM_BY_ABBR[champion]?.name}</div>}
+          </>
+        ) : (
+          ['AFC', 'NFC'].map((c) => (
+            <Fragment key={c}>
+              <h4 className="bx-mobile-conf">{c}</h4>
+              {groups[active](c).map((m, i) => (
+                <Match key={i} m={m} onPick={onPick} onOpen={onOpen} />
+              ))}
+              {active === 'WC' && conferences[c].byeTeam && (
+                <Bye abbr={conferences[c].byeTeam} onPick={onPick} />
+              )}
+            </Fragment>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
 // The bracket itself, without the page heading around it.
 //
 // Split out from the Playoffs view so the History tab can render an archived season
@@ -160,6 +233,7 @@ export function BracketBody({ games, seeds, tz, onPick, onOpen, hideScores = fal
     return hideScores ? blindBracket(built) : built
   }, [games, seeds, hideScores])
   const { conferences, sb, champion, regularSeasonStarted, hasPostseason } = bracket
+  const isMobile = useMediaQuery('(max-width: 720px)')
 
   return (
     <>
@@ -193,19 +267,29 @@ export function BracketBody({ games, seeds, tz, onPick, onOpen, hideScores = fal
             </p>
           )}
 
-          <div className="bx-bracket">
-            <ConfBracket conf="AFC" data={conferences.AFC} side="afc" onPick={onPick} onOpen={onOpen} />
+          {isMobile ? (
+            <MobileBracket
+              conferences={conferences}
+              sb={sb}
+              champion={champion}
+              onPick={onPick}
+              onOpen={onOpen}
+            />
+          ) : (
+            <div className="bx-bracket">
+              <ConfBracket conf="AFC" data={conferences.AFC} side="afc" onPick={onPick} onOpen={onOpen} />
 
-            <div className="bx-sb">
-              <h4 className="bx-sb-label">{roundName('SB')}</h4>
-              <Match m={sb} onPick={onPick} onOpen={onOpen} />
-              {champion && (
-                <div className="bx-sb-champ">🏆 {TEAM_BY_ABBR[champion]?.name}</div>
-              )}
+              <div className="bx-sb">
+                <h4 className="bx-sb-label">{roundName('SB')}</h4>
+                <Match m={sb} onPick={onPick} onOpen={onOpen} />
+                {champion && (
+                  <div className="bx-sb-champ">🏆 {TEAM_BY_ABBR[champion]?.name}</div>
+                )}
+              </div>
+
+              <ConfBracket conf="NFC" data={conferences.NFC} side="nfc" onPick={onPick} onOpen={onOpen} />
             </div>
-
-            <ConfBracket conf="NFC" data={conferences.NFC} side="nfc" onPick={onPick} onOpen={onOpen} />
-          </div>
+          )}
         </>
       )}
     </>

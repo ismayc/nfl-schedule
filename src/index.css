@@ -1200,7 +1200,7 @@ select:hover,
    runs the full height. Ten rows read as one board rather than ten boxes. */
 .game {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: 126px 1fr;
   gap: 16px;
   align-items: center;
   background: transparent;
@@ -3124,17 +3124,25 @@ button.drill-row:hover {
 .bx-bracket {
   display: flex;
   align-items: center;
-  justify-content: center;
+  /* Plain `center` puts the overflow on BOTH sides of a scroller, and the left part can
+     never be scrolled to. `safe` falls back to the start edge when the bracket is wider. */
+  justify-content: safe center;
   gap: 14px;
   overflow-x: auto;
   padding-bottom: 8px;
   margin-bottom: 16px;
 }
+/* Keep their full width so the bracket scrolls. Allowed to shrink, the conferences got
+   narrower than their own columns, which then printed over each other (found on a phone,
+   November 2, 2026). Phones now get the one-round list below instead. */
+.bx-conf,
+.bx-sb {
+  flex: 0 0 auto;
+}
 .bx-conf {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 0;
 }
 .bx-conf-label,
 .bx-sb-label {
@@ -3266,13 +3274,46 @@ button.drill-row:hover {
   color: #1a1204;
 }
 
-@media (max-width: 640px) {
-  .bx-bracket {
-    justify-content: flex-start;
-  }
-  .bx-conf-rounds .bx-col {
-    min-width: 130px;
-  }
+/* Phone bracket: a round selector and one round as a full-width list, as in the NBA viewer. */
+.bx-round-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 14px;
+  padding-bottom: 2px;
+}
+.bx-round-btn {
+  flex: 1 0 auto;
+  white-space: nowrap;
+  padding: 9px 13px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--card);
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.bx-round-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--card-hover);
+}
+.bx-mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bx-mobile-conf {
+  margin: 8px 0 2px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+.bx-mobile-list .bx-sb-champ {
+  justify-content: center;
 }
 
 /* ── Week view: day-column grid (Thu · Sat · Sun · Mon), Sunday split by slot ──── */
@@ -3447,13 +3488,14 @@ button.drill-row:hover {
 .conf-groups {
   display: grid;
   gap: 16px;
-  grid-template-columns: 1fr;
+  /* minmax(0, ...), or a track grows to its table's width and pushes the page sideways. */
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
 }
 
 @media (min-width: 1000px) {
   .conf-groups {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
@@ -3773,5 +3815,43 @@ button.drill-row:hover {
   .sc-team {
     min-width: 64px;
     padding: 4px 6px;
+  }
+}
+
+/* Phone leaders: the name wraps and the bar gives up its minimum, or a long name pushes
+   the value column off the screen and the whole page scrolls sideways (November 2, 2026). */
+@media (max-width: 460px) {
+  .lead-name {
+    white-space: normal;
+  }
+  .lead-bar {
+    width: 30%;
+    min-width: 28px;
+  }
+}
+@media (max-width: 460px) {
+  /* A button centers its text, which shows once a long name takes two lines. */
+  .lead-player {
+    text-align: left;
+  }
+}
+
+/* Fit all four round pills on a 390px phone, so the last one is not cut off at the edge.
+   Narrower phones still scroll the row. */
+@media (max-width: 460px) {
+  .bx-round-btn {
+    flex: 1 1 auto;
+    padding: 9px 6px;
+    font-size: 0.76rem;
+  }
+}
+
+/* Team panel roster: minmax(0, ...) lets a row stay inside the panel on a small phone. */
+.tp-roster {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 360px) {
+  .tp-player {
+    flex-wrap: wrap;
   }
 }

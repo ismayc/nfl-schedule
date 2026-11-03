@@ -125,6 +125,7 @@ export default function GameCard({ game, tz, hideScores, onOpen }) {
         {meta.map((m) => (
           <span key={m}>{m}</span>
         ))}
+        {state === 'upcoming' && !game.broadcast?.length && <span className="net-tba">Channel TBA</span>}
         {regional && (
           <span
             className="regional"

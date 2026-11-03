@@ -78,7 +78,9 @@ describe('ScheduleView', () => {
     // 20 future game-days, two games each — the default view must show the first 14
     // days and fold the remaining 6 (12 games) behind "Later games". Without the cap
     // a fresh rollover renders the whole 272-game season on load.
-    const base = Date.now()
+    // Step from midday, never from now. Just after local midnight, a 24-hour step across
+    // the autumn clock change lands on the same date twice and yields 19 days, not 20.
+    const base = new Date().setUTCHours(17, 0, 0, 0)
     const wk = []
     for (let d = 1; d <= 20; d++) {
       const tip = new Date(base + d * 24 * 60 * 60 * 1000).toISOString()

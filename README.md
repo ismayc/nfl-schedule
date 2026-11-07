@@ -30,8 +30,11 @@ snapshot of the season — it renders a complete season with **zero requests on 
 **Star a team** from any game card, standings row, or team panel to highlight it across
 every view, filter the schedule to "My teams", and scope live alerts to it. Clicking any
 team opens a **team panel** — splits, form, roster, and what's next. Plus: light/dark
-themes, spoiler-free mode, shareable URLs, live alerts for notable moments, a game-detail
-modal with a quarter line score and season series, `.ics` calendar export (whole season or
+themes, spoiler-free mode (hides scores, overtime, and bracket results, and only the
+kickoff alert fires), shareable URLs, live alerts for notable moments, a game-detail
+modal with a quarter line score and season series, an "On my services" filter for where to
+watch (an upcoming game with no channel yet shows "Channel TBA"), an auto-updating
+`webcal://` calendar subscription (Netlify host only) plus `.ics` export (whole season or
 one team's), and installable-PWA support.
 
 ## Data
@@ -39,14 +42,16 @@ one team's), and installable-PWA support.
 Everything comes from ESPN's public, keyless, CORS-open feeds.
 
 **The season is committed, not fetched.** `scripts/fetch-schedule.mjs` generates
-`src/data/schedule.js`, `src/data/teams.js`, and `src/data/leaders.js`, and mirrors team
+`src/data/schedule.js`, `src/data/teams.js`, `src/data/leaders.js`, and `src/data/meta.js`
+(which feeds the footer's "Data as of" time), and mirrors team
 logos into `public/logos/`. The app therefore renders a complete season with **zero
 requests on load**. At runtime, ESPN's scoreboard is polled only to overlay games that are
 live or just finished (every 30s while a game is in progress, 2 min otherwise, never once
 the season ends).
 
 That snapshot is refreshed by `.github/workflows/refresh-data.yml`, which regenerates the
-data, runs the test suite against it, and opens a PR. Standings are *derived* from the
+data, runs the test suite against it, and commits to `main` if it passes. Standings are
+*derived* from the
 committed scores, so a bad refresh surfaces as a failing test rather than a quietly wrong
 table.
 
@@ -165,8 +170,8 @@ Real, but frozen. There are two suites, and they never mix:
   2026 bracket doesn't exist until January. It reproduces the real outcome, champion and
   all. That fixture caught a seeding/bracket coupling bug a synthetic test would have sailed
   past.
-- **Empty-season states** matter here: the committed 2026 snapshot has no games played yet,
-  so every view is tested in both its populated and empty forms.
+- **Empty-season states** matter here: the frozen test data is a mid-season snapshot with
+  only some games played, so every view is tested in both its populated and empty forms.
 
 One gap the suite structurally cannot close: the live overlay's field mapping was inferred
 from completed and scheduled games, and the tests mock ESPN using the same inferences — so
@@ -185,7 +190,7 @@ subpath (GitHub Pages `/nfl-schedule/`) with no separate build.
 
 ## Credits
 
-Created by [Chester Ismay](https://chester.rbind.io). Source on
+Created by [Chester Ismay](https://chesterismay.com). Source on
 [GitHub](https://github.com/ismayc/nfl-schedule).
 
 Unofficial fan project. Not affiliated with, endorsed by, or sponsored by the NFL. Team

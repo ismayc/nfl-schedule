@@ -4,6 +4,10 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-11-07
+
+- **The README is up to date again.** It now says the refresh commits to `main` instead of opening a PR, and it covers spoiler-free mode, "On my services", Channel TBA, and the `webcal://` subscription.
+
 ## 2026-11-02
 
 - **An unannounced channel now says "Channel TBA".** ESPN lists no channel until a few days before a game, and the card and game detail used to show nothing. Only games still to come get the tag.

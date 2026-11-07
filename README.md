@@ -23,7 +23,7 @@ snapshot of the season — it renders a complete season with **zero requests on 
 | 📆 **Week** | One NFL week at a glance, as day columns (Thu · Sat · Sun · Mon) rather than a long list — with the Sunday slate split by kickoff window (early, late, Sunday night). Page through weeks 1–18, and see who's on a bye. |
 | 📊 **Standings** | By division (all eight, division winners marked) or by conference (seeded 1–16 with the playoff cutline). W-L-**T**, win %, points for/against and differential, home/road and division splits, streak. |
 | 🔀 **Scenarios** | Pick a result (a win, a loss, or a tie) for the games that are left. Once 6 or fewer are open, every combination of them is played out under the official tiebreakers, and a grid per conference shows the share of outcomes that lands each team at each seed. Tap a cell to see exactly which results produce it; tap a line to pick them. A picked game has no score, so a seed that hangs on the points tiebreakers is marked, not shown as settled. Once every game is picked, it shows the seeding, how each tie broke, and the Wild Card round. |
-| 🏆 **Playoffs** | The single-elimination bracket — seven seeds per conference, the No. 1 seed's bye, re-seeding every round, the two conferences converging on the Super Bowl. Projected from the standings until the field is set. |
+| 🏆 **Playoffs** | The single-elimination bracket — seven seeds per conference, the No. 1 seed's bye, re-seeding every round, the two conferences converging on the Super Bowl. Projected from the standings until the field is set. On a phone it shows one round at a time, picked from round buttons. |
 | 📈 **Stats** | Season totals, league leaders across passing / rushing / receiving / defense, scoring margin, and the playoff race per conference. |
 | 📜 **History** | Every completed season back to **2021**, in three modes: one season in full (bracket + both final tables), that season's **stats** (totals, all eight leaderboards, scoring margin), and every **Super Bowl** with the seed each finalist came from. |
 
@@ -54,6 +54,11 @@ data, runs the test suite against it, and commits to `main` if it passes. Standi
 *derived* from the
 committed scores, so a bad refresh surfaces as a failing test rather than a quietly wrong
 table.
+
+Two more workflows watch that pipeline. `data-freshness.yml` runs every 6 hours and goes
+red, with an issue, when no refresh has reached ESPN recently. `new-season-watch.yml` runs
+daily, and when ESPN posts next season's schedule it opens an issue and drafts the
+rollover PR, because a rollover is a decision and not an automatic step.
 
 ### Three things about the NFL feed
 
@@ -100,8 +105,8 @@ archived season is directly comparable with the one on screen.
 
 Each season commits its **final conference standings**, its **13 postseason games**, its
 **season totals**, and its **leader boards** (as `{id, rank, value}` against a deduped
-per-season player table). The ~272 regular-season games are summarised into those totals
-rather than committed, which is why five extra seasons cost ~145KB.
+per-season player table). The ~272 regular-season games are summarized into those totals
+rather than committed, which is why five extra seasons cost ~130KB.
 
 Nothing derived is committed. The bracket is rebuilt at runtime by the same
 `buildBracket()` the live season uses — it takes the committed seeds as an optional

@@ -99,6 +99,24 @@ describe('gamesFromTeamFeed', () => {
     expect(gamesFromTeamFeed([odd], KNOWN)).toEqual([])
   })
 
+  // On November 8, 2026 a refresh ran while game 401873039 was at "1:15 - OT", and it
+  // committed overtime on a game with no score. Overtime, like the score, waits for the final.
+  it('marks overtime only on a completed game', () => {
+    const status = (period, completed) => ({
+      competitions: [
+        {
+          status: { period, type: { name: completed ? 'STATUS_FINAL' : 'STATUS_IN_PROGRESS', completed } },
+          competitors: [team('29', 'CAR', 'home'), team('14', 'LAR', 'away')],
+        },
+      ],
+    })
+    const live = teamEvent('live', null, null, status(5, false))
+    const done = teamEvent('done', null, null, status(5, true))
+    const [d, l] = gamesFromTeamFeed([done, live], KNOWN).sort((a, b) => a.id.localeCompare(b.id))
+    expect([d.id, d.ot]).toEqual(['done', 1])
+    expect([l.id, l.ot, l.score]).toEqual(['live', undefined, undefined])
+  })
+
   it('sorts by kickoff, then id', () => {
     const late = teamEvent('b', team('29', 'CAR', 'home'), team('14', 'LAR', 'away'), { date: '2026-09-20T17:00Z' })
     const early2 = teamEvent('z', team('17', 'NE', 'home'), team('26', 'SEA', 'away'))

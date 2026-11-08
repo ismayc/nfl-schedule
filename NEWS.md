@@ -8,6 +8,8 @@ data/source updates, deployment). Newest day on top.
 
 - **The bracket shows an upcoming playoff kickoff in your time zone.** Within a day of a scheduled playoff game, the bracket used to show ESPN's own pre-game text, which is Eastern time for every reader ("1/10 - 8:00 PM EST"). It now shows the kickoff from the game's start time in the zone the viewer is set to ("Sat, Jan 10, 5:00 PM" in Pacific time), or "Time TBD".
 
+- **A refresh during a live overtime no longer fails.** Overtime was set from the period number while the score waited for the final, so the refresh gate failed on November 8, 2026, while game 401873039 was in overtime. Overtime now waits for the final too.
+
 ## 2026-11-07
 
 - **The README is up to date again.** It now says the refresh commits to `main` instead of opening a PR, and it covers spoiler-free mode, "On my services", Channel TBA, and the `webcal://` subscription.

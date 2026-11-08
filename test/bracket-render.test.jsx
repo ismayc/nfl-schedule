@@ -185,14 +185,27 @@ describe('Bracket — live and scheduled matchups', () => {
     round: 'WC',
     home: 'CHI',
     away: 'GB',
-    statusLabel: 'Sun 4:30 PM',
+    // ESPN's pre-game text, which is Eastern whoever reads it.
+    statusLabel: '1/10 - 8:00 PM EST',
   }
 
-  it('renders a live badge and a scheduled status label', () => {
+  it('renders a live badge, and a scheduled kickoff in the reader\'s zone', () => {
     const { container } = render(<Bracket games={[...REG, liveWC, scheduledWC]} tz={TZ} />)
     expect(container.querySelector('.bx-match-live')).toBeTruthy()
     expect(screen.getByText(/LIVE/)).toBeInTheDocument()
     expect(screen.getByText('Q3 7:12')).toBeInTheDocument()
-    expect(screen.getByText('Sun 4:30 PM')).toBeInTheDocument()
+    expect(screen.getByText('Sat, Jan 10, 8:00 PM')).toBeInTheDocument()
+  })
+
+  it('never shows ESPN\'s Eastern pre-game text to a reader in another zone', () => {
+    render(<Bracket games={[...REG, liveWC, scheduledWC]} tz="America/Los_Angeles" />)
+    expect(screen.getByText('Sat, Jan 10, 5:00 PM')).toBeInTheDocument()
+    expect(screen.queryByText(/EST/)).not.toBeInTheDocument()
+    expect(screen.getByText('Q3 7:12')).toBeInTheDocument()
+  })
+
+  it('says Time TBD for a scheduled game with no kickoff yet', () => {
+    render(<Bracket games={[...REG, { ...scheduledWC, timeTbd: true, statusLabel: 'TBD' }]} tz={TZ} />)
+    expect(screen.getByText('Sat, Jan 10, Time TBD')).toBeInTheDocument()
   })
 })

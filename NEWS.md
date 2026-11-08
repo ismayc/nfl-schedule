@@ -4,6 +4,10 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-11-08
+
+- **The bracket shows an upcoming playoff kickoff in your time zone.** Within a day of a scheduled playoff game, the bracket used to show ESPN's own pre-game text, which is Eastern time for every reader ("1/10 - 8:00 PM EST"). It now shows the kickoff from the game's start time in the zone the viewer is set to ("Sat, Jan 10, 5:00 PM" in Pacific time), or "Time TBD".
+
 ## 2026-11-07
 
 - **The README is up to date again.** It now says the refresh commits to `main` instead of opening a PR, and it covers spoiler-free mode, "On my services", Channel TBA, and the `webcal://` subscription.

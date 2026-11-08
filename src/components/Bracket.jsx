@@ -4,6 +4,7 @@ import { PLAYOFF } from '../config/league.js'
 import { TEAM_BY_ABBR } from '../data/teams.js'
 import { useFollow } from '../context/follow.jsx'
 import TeamLogo from './TeamLogo.jsx'
+import { formatDate, gameTime } from '../utils/time.js'
 
 // Track a CSS media query, as the NBA bracket does. jsdom (tests) has no matchMedia, so this
 // reports false there and the desktop layout renders.
@@ -229,9 +230,17 @@ function MobileBracket({ conferences, sb, champion, onPick, onOpen }) {
 // regular-season results it doesn't carry.
 export function BracketBody({ games, seeds, tz, onPick, onOpen, hideScores = false }) {
   const bracket = useMemo(() => {
-    const built = buildBracket(games, seeds)
+    // The live overlay gives a game not yet played ESPN's own pre-game text, which is
+    // Eastern for every reader ("1/10 - 4:30 PM EST", checked November 8, 2026 from
+    // Arizona). A scheduled matchup shows its kickoff in the reader's zone instead.
+    const local = games.map((g) =>
+      g.statusLabel && !g.live && !g.score
+        ? { ...g, statusLabel: `${formatDate(g.tip, tz)}, ${gameTime(g, tz)}` }
+        : g
+    )
+    const built = buildBracket(local, seeds)
     return hideScores ? blindBracket(built) : built
-  }, [games, seeds, hideScores])
+  }, [games, seeds, tz, hideScores])
   const { conferences, sb, champion, regularSeasonStarted, hasPostseason } = bracket
   const isMobile = useMediaQuery('(max-width: 720px)')
 

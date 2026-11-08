@@ -82,14 +82,14 @@ describe('Bracket in spoiler-free mode', () => {
       round: 'WC',
       home: 'CHI',
       away: 'GB',
-      statusLabel: 'Sun 4:30 PM',
+      statusLabel: '1/10 - 8:00 PM EST',
     }
     const { container } = render(
       <Bracket games={[...REG, liveWC, scheduledWC]} tz={TZ} hideScores />
     )
     expect(screen.getByText(/LIVE/)).toBeInTheDocument()
     expect(screen.queryByText('Q3 7:12')).not.toBeInTheDocument()
-    expect(screen.getByText('Sun 4:30 PM')).toBeInTheDocument()
+    expect(screen.getByText('Sat, Jan 10, 8:00 PM')).toBeInTheDocument()
     expect(container.querySelectorAll('.bx-score')).toHaveLength(0)
   })
 

@@ -136,6 +136,20 @@ describe('the data-freshness monitor', () => {
     expect(guard).toBeGreaterThan(-1)
     expect(guard).toBeLessThan(src.indexOf('gh issue create'))
   })
+
+  it('runs Refresh once to self-heal before it files anything', () => {
+    // On November 8, 2026 the-unrivaled-schedule's first monitor run filed a stale-data issue because
+    // the new repo's daily Refresh had not fired yet; a hand dispatch fetched cleanly.
+    // A late or skipped cron is the common cause, and running Refresh fixes it. The shape
+    // of the mistake: the dispatch dropped, or moved after the issue is filed, or the
+    // token losing the `actions: write` that lets it dispatch.
+    expect(src).toMatch(/^ {2}actions: write\b/m)
+    expect(src).toMatch(/^ {2}HEAL_WAIT_MINUTES: \d+$/m)
+    const dispatch = src.indexOf('elif gh workflow run "$REFRESH_WORKFLOW"; then')
+    expect(dispatch).toBeGreaterThan(-1)
+    expect(dispatch).toBeLessThan(src.indexOf('gh issue create'))
+    expect(dispatch).toBeLessThan(src.indexOf('if gh issue close'))
+  })
 })
 
 describe('the storage namespace', () => {

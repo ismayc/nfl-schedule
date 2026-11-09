@@ -6,6 +6,7 @@ data/source updates, deployment). Newest day on top.
 
 ## 2026-11-08
 
+- **The clock rehearsal in CI runs its seven dates in parallel.** It ran them one after another, which made that job take 8 minutes. Each date is now its own job, with the same dates, the same command, and the same coverage gate, as in the NBA viewer since September 29, 2026.
 - **The bracket shows an upcoming playoff kickoff in your time zone.** Within a day of a scheduled playoff game, the bracket used to show ESPN's own pre-game text, which is Eastern time for every reader ("1/10 - 8:00 PM EST"). It now shows the kickoff from the game's start time in the zone the viewer is set to ("Sat, Jan 10, 5:00 PM" in Pacific time), or "Time TBD".
 
 - **A refresh during a live overtime no longer fails.** Overtime was set from the period number while the score waited for the final, so the refresh gate failed on November 8, 2026, while game 401873039 was in overtime. Overtime now waits for the final too.

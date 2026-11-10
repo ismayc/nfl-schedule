@@ -7,6 +7,7 @@
 // Node built-ins only.
 
 import { getJson, mapLimit, CONCURRENCY } from './fetch.mjs'
+import { splitFranchises } from './franchises.mjs'
 
 export { sleep, backoffMs, CONCURRENCY, mapLimit, fetchRetry, getJson, getText } from './fetch.mjs'
 
@@ -104,10 +105,15 @@ export async function fetchTeams(espnPath, season) {
   // list alone; the caller's roster guard is the backstop.
   if (season && !franchises.size)
     console.warn('  ⚠ no conference membership available; not filtering')
-  const teams = franchises.size ? listed.filter((t) => franchises.has(t.id)) : listed
-  const dropped = listed.filter((t) => !teams.includes(t))
+  // See ./franchises.mjs for both directions the two feeds disagree in.
+  const { teams, dropped, missing } = splitFranchises(listed, franchises)
   if (dropped.length)
     console.log(`  ignored ${dropped.length} non-franchise: ${dropped.map((t) => t.abbreviation).join(' ')}`)
+  if (missing.length) {
+    const added = await Promise.all(missing.map((id) => getJson(`${SITE}/${espnPath}/teams/${id}`)))
+    teams.push(...added.map((r) => r.team))
+    console.log(`  added ${missing.length} off the current list: ${added.map((r) => r.team.abbreviation).join(' ')}`)
+  }
   return teams
     .map((t) => ({
       id: t.id,
@@ -222,7 +228,9 @@ async function fetchByTeamSchedule(espnPath, teams, { season, seasonTypes = [2, 
     const evs = []
     for (const type of seasonTypes) {
       const d = await getJson(
-        `${SITE}/${espnPath}/teams/${t.abbr}/schedule?season=${season}&seasontype=${type}`
+        // By id, not abbreviation: an inactive team's abbreviation answers 400 (the
+        // WNBA's Connecticut, 2026-11-01) while its id still serves the schedule.
+        `${SITE}/${espnPath}/teams/${t.id}/schedule?season=${season}&seasontype=${type}`
       )
       evs.push(...(d.events || []))
     }

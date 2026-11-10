@@ -4,6 +4,10 @@ A dated changelog for The NFL Schedule. Each heading is a calendar
 day; bullet points capture every change made that day (features, fixes,
 data/source updates, deployment). Newest day on top.
 
+## 2026-11-10
+
+- **A franchise that leaves ESPN's current team list keeps its season.** On November 1, 2026, ESPN took the WNBA's Connecticut Sun off its current team list while the 2026 season still held it, and the WNBA viewer's refresh failed for 9 days. The same team filter is here: a team in the season's conferences that is not on the current list now comes from its own team record, and team schedules are fetched by team id, because ESPN answers 400 for an inactive team's abbreviation. No data changes today.
+
 ## 2026-11-08
 
 - **The clock rehearsal in CI runs its seven dates in parallel.** It ran them one after another, which made that job take 8 minutes. Each date is now its own job, with the same dates, the same command, and the same coverage gate, as in the NBA viewer since September 29, 2026.

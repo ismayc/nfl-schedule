@@ -148,7 +148,9 @@ export async function fetchSchedule(teams, season = SEASON) {
     teams.map(async (t) => {
       const evs = []
       for (const type of [2, 3]) {
-        const d = await getJson(`${SITE}/${ESPN_PATH}/teams/${t.abbr}/schedule?season=${season}&seasontype=${type}`)
+        // By id, not abbreviation: an inactive team's abbreviation answers 400 (the
+        // WNBA's Connecticut, 2026-11-01) while its id still serves the schedule.
+        const d = await getJson(`${SITE}/${ESPN_PATH}/teams/${t.id}/schedule?season=${season}&seasontype=${type}`)
         evs.push(...(d.events || []))
       }
       return evs
